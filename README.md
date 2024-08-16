@@ -1,6 +1,6 @@
-## coins-meg_meg-analysis README
+## coins-meg README
 
-##### Last updated AXL 08/08/2023
+##### Last updated LTH 09/08/2023
 
 COINS-MEG analysis repo.
 
@@ -8,7 +8,7 @@ COINS-MEG analysis repo.
 
 See `.gitignore` for more details of which files are ignored in commits.
 
-Scripts in the repo should write to `/ohba/pi/lhunt/datasets/coins-meg_meg-analysis/derivatives`.
+Scripts in the repo should write to `/ohba/pi/lhunt/datasets/coins-meg_data/derivatives`. (Note that any references to `.../coins-meg_meg-analysis/derivatives` should be removed, as this was before the repository and dataset were restructured.
 
 - `analysis` contains:
 
@@ -33,11 +33,19 @@ Scripts in the repo should write to `/ohba/pi/lhunt/datasets/coins-meg_meg-analy
     - `coinsmeg_if-data-in-directory.csv`: is this data in the relevant subdirectory? ('y' = yes; 'n' = no)
     - `coinsmeg_participant_notes.xlsx`: any notes relating to this participant (e.g., any issues, truncated training due to participant lateness, internal number of the MEG scan denoted by #XXX).
   - Documentation that is not data-related is not yet in this repo. This includes participant screener responses, a password-protected linking document (linking participant names to IDs), and the study protocol (`coinsmeg_protocol.md`).
+ 
+- `experiment` contains:
 
+  - two folders containing PsychoPy code to run the experiment.
+    - `ses-1-training` contains the task as set-up for initial behavioural training.
+    - `ses-2-meg` contains the task as set-up for in-person testing in the MEG scanner at the OHBA centre.
+  - note that both of these folders contain `stimgen` subdirectories, with scripts written in MATLAB that control the generative processes for the experimental design.
+  - (note also that the readme.md files contained within these two subdirectories is currently out-of date. For a clean, up-to-date version of the experimental design repository, visit https://github.com/lilianAweber/cogpsy_laser_task).
+        
 #### Current status
 
 - A first preprocessing and ERF pipeline has been built for `sub-12`.
-- All subjects/runs maxfiltered.
+- All subjects/runs have been maxfiltered.
 
 #### Participants with incomplete data
 
