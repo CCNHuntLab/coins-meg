@@ -2,6 +2,7 @@
 
 from matplotlib import pyplot as plt
 
+import coinsmeg_data as coinsmeg
 import mne
 import osl
 import numpy as np
@@ -14,13 +15,11 @@ import pandas as pd
 from mne.preprocessing import create_eog_epochs
 
 # Read in the data ####
-basedir = '/Users/amyli/Desktop/LH-lab/coins-meg_meg-analysis/'
-#basedir = '/ohba/pi/lhunt/datasets/coins-meg_meg-analysis'
-subj = 12 # this isn't really being used at the moment except to specify ICA output file
+sub = coinsmeg.sub_num2str(12)
 run = 1
 ifMaxfiltered = True
 
-outdir = os.path.join(basedir, 'preprocessed', f'sub-{subj}', f'run-{run}')
+outdir = os.path.join(coinsmeg.PREPROCESSED_DIR, sub, f'run-{run}')
 
 if ifMaxfiltered == False:
     outdir_meg = os.path.join(outdir, 'meg', 'nomax')  # for any meg-related outputs
@@ -41,17 +40,16 @@ os.makedirs(outdir_meg_derivatives, exist_ok=True)
 # Get the filename for a specific subject and run
 
 if ifMaxfiltered == False:
-    name = f'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}_meg'
-    fullpath = os.path.join(basedir, 'data', f'sub-{subj}', 'ses-2-meg', 'meg', name + '.fif')
+    name = f'{sub}_ses-2-meg_task-coinsmeg_run-{run}_meg'
+    fullpath = os.path.join(coinsmeg.PREPROCESSED_DIR, 'data', sub, 'ses-2-meg', 'meg', name + '.fif')
 else:
-    name = f'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss'
-    fullpath = os.path.join(basedir, 'data_maxfiltered', f'sub-{subj}', name + '.fif')
+    name = f'{sub}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss'
+    fullpath = os.path.join(coinsmeg.PREPROCESSED_DIR, 'data_maxfiltered', sub, name + '.fif')
 
 raw = mne.io.read_raw_fif(fullpath, preload=True)
 
 ## Read in the behavioural data outputted by psychopy
-name_beh = f'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}'
-fullpath_beh = os.path.join(basedir, 'data', f'sub-{subj}', 'ses-2-meg', 'beh', name_beh + '.csv')
+fullpath_beh = coinsmeg.get_sub_behav_fpath(sub, run)
 print(fullpath_beh)
 
 raw_beh = pd.read_csv(fullpath_beh)
