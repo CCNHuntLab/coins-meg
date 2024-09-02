@@ -8,6 +8,7 @@ from pprint import pprint
 import yaml
 import ipympl
 from osl import preprocessing, utils
+import coinsmeg_data as coinsmeg
 
 ### Some initial settings
 
@@ -49,25 +50,15 @@ with open('config.yaml', 'w') as file:
     yaml.dump(config, file)
 
 # Read in the data ####
-#basedir = '/Users/amyli/Desktop/LH-lab/coins-meg_meg-analysis/'
-basedir = '/ohba/pi/lhunt/datasets/coins-meg_meg-analysis'
-
-if ifMaxfiltered == False:
-    outdir = os.path.join(basedir, 'preprocessed', 'auto-nomax')
-else:
-    outdir = os.path.join(basedir, 'preprocessed', 'auto-max')
+basedir = '/ohba/pi/lhunt/datasets/coins-meg_data/derivatives'
+outdir = os.path.join(basedir, 'preprocessed', 'auto-max')
 
 # make directory if it doesn't yet exist
 os.makedirs(outdir, exist_ok=True)
 
 # There are multiple runs for each subject. We will first fetch all data using an OSL utility
-
-if ifMaxfiltered == False:
-    name = 'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}_meg'
-    fullpath = os.path.join(basedir, 'data', 'sub-{subj}', 'ses-2-meg', 'meg', name + '.fif')
-else:
-    name = 'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss'
-    fullpath = os.path.join(basedir, 'data_maxfiltered', 'sub-{subj}', name + '.fif')
+name = 'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss'
+fullpath = os.path.join(basedir, 'data_maxfiltered', 'sub-{subj}', name + '.fif')
 
 print(fullpath)
 
@@ -78,7 +69,6 @@ print(datafiles)
 fnames = datafiles.get(subj="sub-19", run="run-4")
 pprint(fnames)
 
-'''
 # Create a text file with the path to each dataset on every line.
 file = open('fnames.txt','w')
 for item in fnames:
