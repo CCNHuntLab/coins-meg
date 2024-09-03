@@ -68,7 +68,7 @@ print(datafiles)
 
 # load all runs of all subjects
 #fnames = datafiles.get()
-fnames = datafiles.get(subj="04", run="4") # load a test subject/run
+fnames = datafiles.get(subj="17", run="1") # load a test subject/run
 pprint(fnames)
 
 # Create a text file with the path to each dataset on every line.
