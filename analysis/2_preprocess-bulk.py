@@ -50,15 +50,16 @@ with open('config.yaml', 'w') as file:
     yaml.dump(config, file)
 
 # Read in the data ####
-basedir = '/ohba/pi/lhunt/datasets/coins-meg_data/derivatives'
-outdir = os.path.join(basedir, 'preprocessed', 'auto-max')
+basedir = coinsmeg.DERIVATIVES_DIR # /.../lhunt/.../coins-meg_data/derivatives
+outdir = coinsmeg.PREPROCESSED_DIR # /.../lhunt/.../coins-meg_data/derivatives/preprocessed
+print(outdir)
 
 # make directory if it doesn't yet exist
 os.makedirs(outdir, exist_ok=True)
 
 # There are multiple runs for each subject. We will first fetch all data using an OSL utility
 name = 'sub-{subj}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss'
-fullpath = os.path.join(basedir, 'data_maxfiltered', 'sub-{subj}', name + '.fif')
+fullpath = os.path.join(coinsmeg.DERIVATIVES_DIR, 'maxfiltered', 'sub-{subj}', name + '.fif')
 
 print(fullpath)
 
@@ -66,7 +67,8 @@ datafiles = osl.utils.Study(fullpath)
 print(datafiles)
 
 # load all runs of all subjects
-fnames = datafiles.get(subj="sub-19", run="run-4")
+#fnames = datafiles.get()
+fnames = datafiles.get(subj="04", run="4") # load a test subject/run
 pprint(fnames)
 
 # Create a text file with the path to each dataset on every line.
@@ -75,7 +77,7 @@ for item in fnames:
     file.write(item+"\n")
 file.close()
 
-#config = osl.preprocessing.load_config("config.yaml")# load in the config
+config = osl.preprocessing.load_config("config.yaml")# load in the config
 
 # Apply the config to automate preprocessing ####
 from osl.preprocessing import run_proc_batch
@@ -108,4 +110,3 @@ run_proc_batch(config, fnames, outdir=outdir,
  #                  overwrite=True,
  #                  dask_client=True)
 
-'''

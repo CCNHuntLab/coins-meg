@@ -1,0 +1,1 @@
+/ohba/pi/lhunt/datasets/coins-meg_data/derivatives/maxfiltered/sub-04/sub-04_ses-2-meg_task-coinsmeg_run-4_meg_transsss.fif
