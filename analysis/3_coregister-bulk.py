@@ -28,11 +28,12 @@ preproc_file = os.path.join(coinsmeg.PREPROCESSED_DIR, name, f"/{name}_preproc_r
 anat_dir = coinsmeg.get_sub_anat_dir(sub)
 smri_file = f"{anat_dir}/{sub}_T1w.nii"
 coreg_dir = os.path.join(coinsmeg.BASE_DIR, "derivatives", "rhino", f"sub-{sub}")
-print(coreg_dir)
+# make directory if it doesn't yet exist
+os.makedirs(coreg_dir, exist_ok=True)
 
 # Subjects to coregister
 # subjects = ["sub-04", "sub-07"] + [f"sub-{i:02d}" for i in range(9, 22)]
-subjects = ["sub-12"] 
+subjects = ["sub-17"] 
 # Settings
 config = """
     source_recon:
