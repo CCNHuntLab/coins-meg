@@ -1,0 +1,51 @@
+meta:
+  event_codes:
+    blockEnd: 20
+    blockStart: 10
+    expEnd: 105
+    expStart: 100
+    keyDown: 6
+    keyLeft: 4
+    keyRelease: 7
+    keyRight: 3
+    keyUp: 5
+    laserHit: 1
+    laserMiss: 2
+preproc:
+- find_events:
+    min_duration: 0.005
+- set_channel_types:
+    ECG003: ecg
+    EOG001: eog
+    EOG002: eog
+- filter:
+    h_freq: 100
+    l_freq: 0.25
+- notch_filter:
+    freqs: 50 100
+- bad_segments:
+    picks: mag
+    segment_len: 100
+    significance_level: 0.1
+- bad_segments:
+    picks: grad
+    segment_len: 100
+    significance_level: 0.1
+- bad_segments:
+    mode: diff
+    picks: mag
+    segment_len: 100
+    significance_level: 0.1
+- bad_segments:
+    mode: diff
+    picks: grad
+    segment_len: 100
+    significance_level: 0.1
+- ica_raw:
+    n_components: 64
+    picks: meg
+- ica_autoreject:
+    ecgmethod: correlation
+    eogthreshold: auto
+    picks: meg
+- interpolate_bads: {}

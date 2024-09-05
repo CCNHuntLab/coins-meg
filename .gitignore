@@ -50,3 +50,8 @@ analysis/venv/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# ignore dask workerspace
+dask-worker-space/
+*.dirlock
+*.lock
