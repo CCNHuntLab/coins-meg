@@ -47,6 +47,7 @@ def setup_mpl_style(fontsize=8):
     mpl.rcParams['figure.constrained_layout.use'] = True
 
 def main(feat_names=["laserHit", "laserMiss"]):
+# def main(feat_names=["keyLeft", "keyRight"]):
     # Output directory in which the results will be saved
     outdir = "./gitignore/results"
     create_dir_if_needed(outdir)
@@ -59,7 +60,7 @@ def main(feat_names=["laserHit", "laserMiss"]):
     sourcespc_path =  '../coins-meg_data/derivatives/src/sub-17/parc_raw.fif'
 
     # Features (i.e. event types) for which we want to estimate a TRF
-    feat_names = ["laserHit", "laserMiss"]
+    # feat_names = ["laserHit", "laserMiss"]
     # feat_names = ["laserHit", "laserMiss", "keyLeft", "keyRight"]
 
     # Parcel number whose TRF we will want to plot and save.
@@ -76,6 +77,11 @@ def main(feat_names=["laserHit", "laserMiss"]):
         ftype="preproc_raw")
     event_id = sensorspc_dataset["event_id"]
     feat_ids = [event_id[fn] for fn in feat_names]
+
+    # Load the sensor-space data
+    sensorspc_raw = sensorspc_dataset["raw"]
+    sensors_data_mag = sensorspc_raw.get_data(picks="mag")
+    sensors_data_grad = sensorspc_raw.get_data(picks="grad")
 
     # Load the source-space data
     sourcespc_raw = mne.io.read_raw(sourcespc_path)
@@ -103,47 +109,23 @@ def main(feat_names=["laserHit", "laserMiss"]):
     # of shape (n_samples, n_features), where n_features correspond to each event type
     # for which we want to estimate a TRF.
     #
-    # Y should be a matrix of shape (n_samples, n_parcels).
+    # Y should be a matrix of shape (n_samples, n_channels) where
+    # n_channels corresponds to the number of sensors when working in sensor space,
+    # and when working in source space after parcellations, to the number of parcels.
     #
 
     # Create X from stim_data
     X = np.stack([stim_data == f_id for f_id in feat_ids], axis=1) # shape (n_samples, n_features)
     print(f"X shape: {X.shape}")
 
-    # Create Y from parcels_data
-    Y = parcels_data.T
-    print(f"Y shape: {Y.shape}")
+    # Create Y from parcels_data / sensors_data
+    Y_parcels = parcels_data.T
+    print(f"Y_parcels shape: {Y_parcels.shape}")
 
-    # Create the TRF model
-    trf_model = mne.decoding.ReceptiveField(tmin, tmax, sfreq, feature_names=feat_names)
-
-    # Estimate the TRFs (for all parcels)
-    trf_model.fit(X, Y)
-
-    # Extract the TRFs (i.e., the estimated beta coefficients)
-    # for the selected parcel
-    trfs = trf_model.coef_[i_parcel, :, :]
-
-    #
-    # Plot the TRFs of the selected parcels
-    #
-
-    setup_mpl_style()
-    fig, ax = plt.subplots(figsize=(A4_PAPER_CONTENT_WIDTH / 2, DEFAULT_HEIGHT))
-    trf_times = trf_model.delays_ / sfreq
-    for i, trf in enumerate(trfs):
-        ax.plot(trf_times, trf, '-', label=f"{feat_names[i]}")
-    ax.legend()
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Beta coefficient")
-    ax.set_title(f"TRFs for parcel {i_parcel}")
-    ax.axvline(0, ls=":", color="black")
-
-    # Save the figure
-    feat_codes_str = f"feat-{'-'.join([str(id) for id in feat_ids])}"
-    figname = f"trf_parcel-{i_parcel}_{feat_codes_str}.png"
-    figpath = op.join(outdir, figname)
-    save_figure(fig, figpath)
+    Y_mag = sensors_data_mag.T
+    Y_grad = sensors_data_grad.T
+    print(f"Y_mag shape: {Y_mag.shape}")
+    print(f"Y_grad shape: {Y_grad.shape}")
 
     #
     # Plot the design matrix
@@ -155,11 +137,65 @@ def main(feat_names=["laserHit", "laserMiss"]):
     # nilearn can plot the design matrix when it is formatted as a dataframe,
     # with columns corresponding features, and rows corresponding to samples.
     design_matrix = pd.DataFrame(X, columns=feat_names)#, index=times)
+    feat_codes_str = f"feat-{'-'.join([str(id) for id in feat_ids])}"
     figname = f"trf-design-matrix_{feat_codes_str}.png"
     figpath = op.join(outdir, figname)
     ax = nilearn.plotting.plot_design_matrix(design_matrix,)
     fig = ax.get_figure()
     save_figure(fig, figpath)
+
+    for (Y, space, pick) in [(Y_parcels, "source", f"parcel-{i_parcel}"),
+        (Y_mag, "sensor", "mag"), (Y_grad, "sensor", "grad")]:
+    # for (Y, space, pick) in [(Y_parcels, "source", f"parcel-{i_parcel}")]:
+
+        # Create the TRF model
+        trf_model = mne.decoding.ReceptiveField(tmin, tmax, sfreq, feature_names=feat_names)
+
+        # Estimate the TRFs (for all parcels)
+        trf_model.fit(X, Y)
+
+        if space == "source":
+            # In source space:
+            # Extract the TRFs (i.e., the estimated beta coefficients)
+            # for the selected parcel
+            trfs = trf_model.coef_[i_parcel, :, :]
+            title = f"TRFs for parcel {i_parcel} in {space} space"
+        else:
+            # In sensor space:
+            # Calculate the Root-mean-square amplitude across the sensors to mirror
+            # the behavior of mne.viz.plot_compare_evokeds()
+            trfs = np.sqrt(trf_model.coef_ ** 2).mean(axis=0)
+            title = f"TRFs for {pick} sensors (mean RMS amplitude across sensors)"
+        #
+        # Plot the TRFs of the selected parcels
+        #
+
+        setup_mpl_style()
+
+        for window in [None, (-0.4, 0.9)]:
+            fig, ax = plt.subplots(figsize=(A4_PAPER_CONTENT_WIDTH / 2, DEFAULT_HEIGHT))
+            trf_times = trf_model.delays_ / sfreq
+            start = (int((window[0]-tmin) * sfreq)
+                        if window is not None
+                        else 0)
+            end = (int((trf_times.shape[0] - (tmax-window[1]) * sfreq))
+                if window is not None
+                else trf_times.shape[0])
+            for i, trf in enumerate(trfs):
+                ax.plot(trf_times[start:end], trf[start:end], '-', label=f"{feat_names[i]}")
+            ax.legend()
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Beta coefficient")
+            ax.set_title(title)
+            ax.axvline(0, ls=":", color="black")
+
+            # Save the figure
+            figname = f"trf_space-{space}_pick-{pick}_{feat_codes_str}"
+            if window is not None:
+                figname += f"_window-{window[0]}-{window[1]}"
+            figname += ".png"
+            figpath = op.join(outdir, figname)
+            save_figure(fig, figpath)
 
 if __name__ == '__main__':
     main()
