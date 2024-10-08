@@ -5,52 +5,21 @@ using example data from the COINS-MEG dataset.
 This estimation can be done in source space or sensor space.
 """
 
-import matplotlib as mpl
+import cf_utils
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
 import osl
-import os
 import os.path as op
 
-# Utility functions that Cedric likes to use (could be moved to a separate module)
-def create_dir_if_needed(d):
-    if not op.exists(d):
-        os.makedirs(d, exist_ok=True)
+def main():
+    # Features (i.e. event types) for which we want to estimate a TRF
+    feat_names = ["laserHit", "laserMiss"]
+    # feat_names = ["laserHit", "laserMiss", "keyLeft", "keyRight"]
 
-def save_figure(fig, figpath, verbose=True):
-    fig.savefig(figpath)
-    plt.close(fig)
-    if verbose:
-        print(f"Figure saved at {figpath}")
-
-# Plotting constants and defaults that Cedric likes to use (could be moved to a separate module)
-A4_PAPER_CONTENT_WIDTH = 7.1
-DEFAULT_HEIGHT = 2.16
-def setup_mpl_style(fontsize=8):
-    mpl.rcParams['figure.dpi'] = 300
-    mpl.rcParams['font.family'] = 'sans-serif'
-    mpl.rcParams['font.sans-serif'] = 'Arial'
-    mpl.rcParams['mathtext.default'] = 'regular'
-    mpl.rcParams['axes.spines.top'] = False
-    mpl.rcParams['axes.spines.right'] = False
-    mpl.rcParams['font.size'] = fontsize
-    mpl.rcParams['figure.titlesize'] = fontsize
-    mpl.rcParams['axes.titlesize'] = fontsize
-    mpl.rcParams['axes.labelsize'] = fontsize
-    mpl.rcParams['xtick.labelsize'] = fontsize
-    mpl.rcParams['ytick.labelsize'] = fontsize
-    mpl.rcParams['legend.fontsize'] = fontsize-1
-    mpl.rcParams['axes.labelpad'] = 4.0
-    mpl.rcParams['lines.linewidth'] = 1.0
-    mpl.rcParams["legend.frameon"] = False
-    mpl.rcParams['figure.constrained_layout.use'] = True
-
-def main(feat_names=["laserHit", "laserMiss"]):
-# def main(feat_names=["keyLeft", "keyRight"]):
     # Output directory in which the results will be saved
     outdir = "./gitignore/results"
-    create_dir_if_needed(outdir)
+    cf_utils.create_dir_if_needed(outdir)
 
     # Local file paths for the example data.
     # Preprocessed, sensor-space MEG data for subject 17 and run 1
@@ -58,12 +27,12 @@ def main(feat_names=["laserHit", "laserMiss"]):
     # Parcellated, source-space MEG data for subject 17 and run 1 (this file was
     # saved by code in 3_coregister_manual.ipynb)
     sourcespc_path =  '../coins-meg_data/derivatives/src/sub-17/parc_raw.fif'
+    
+    # Subject and run corresponding to this example
+    sub = 17
+    run = 1
 
-    # Features (i.e. event types) for which we want to estimate a TRF
-    # feat_names = ["laserHit", "laserMiss"]
-    # feat_names = ["laserHit", "laserMiss", "keyLeft", "keyRight"]
-
-    # Parcel number whose TRF we will want to plot and save.
+    # Parcel number whose TRF we will plot and save.
     i_parcel = 2
 
     # Time window for the TRF
@@ -120,10 +89,9 @@ def main(feat_names=["laserHit", "laserMiss"]):
 
     # Create Y from parcels_data / sensors_data
     Y_parcels = parcels_data.T
-    print(f"Y_parcels shape: {Y_parcels.shape}")
-
     Y_mag = sensors_data_mag.T
     Y_grad = sensors_data_grad.T
+    print(f"Y_parcels shape: {Y_parcels.shape}")
     print(f"Y_mag shape: {Y_mag.shape}")
     print(f"Y_grad shape: {Y_grad.shape}")
 
@@ -131,18 +99,21 @@ def main(feat_names=["laserHit", "laserMiss"]):
     # Plot the design matrix
     #
 
+    cf_utils.setup_mpl_style()
+
     import nilearn.plotting
     import pandas as pd
 
     # nilearn can plot the design matrix when it is formatted as a dataframe,
     # with columns corresponding features, and rows corresponding to samples.
     design_matrix = pd.DataFrame(X, columns=feat_names)#, index=times)
-    feat_codes_str = f"feat-{'-'.join([str(id) for id in feat_ids])}"
-    figname = f"trf-design-matrix_{feat_codes_str}.png"
-    figpath = op.join(outdir, figname)
+    feats = '-'.join([str(id) for id in feat_ids])
+    figname = cf_utils.name_with_params("trf-design-matrix",
+        ["sub", "run", "feats"], [sub, run, feats])
+    figpath = cf_utils.path_with_components(outdir, figname, "png")
     ax = nilearn.plotting.plot_design_matrix(design_matrix,)
     fig = ax.get_figure()
-    save_figure(fig, figpath)
+    cf_utils.save_figure(fig, figpath)
 
     for (Y, space, pick) in [(Y_parcels, "source", f"parcel-{i_parcel}"),
         (Y_mag, "sensor", "mag"), (Y_grad, "sensor", "grad")]:
@@ -170,10 +141,9 @@ def main(feat_names=["laserHit", "laserMiss"]):
         # Plot the TRFs of the selected parcels
         #
 
-        setup_mpl_style()
-
         for window in [None, (-0.4, 0.9)]:
-            fig, ax = plt.subplots(figsize=(A4_PAPER_CONTENT_WIDTH / 2, DEFAULT_HEIGHT))
+            fig, ax = plt.subplots(figsize=(cf_utils.A4_PAPER_CONTENT_WIDTH / 2,
+                                            cf_utils.DEFAULT_HEIGHT))
             trf_times = trf_model.delays_ / sfreq
             start = (int((window[0]-tmin) * sfreq)
                         if window is not None
@@ -190,12 +160,12 @@ def main(feat_names=["laserHit", "laserMiss"]):
             ax.axvline(0, ls=":", color="black")
 
             # Save the figure
-            figname = f"trf_space-{space}_pick-{pick}_{feat_codes_str}"
-            if window is not None:
-                figname += f"_window-{window[0]}-{window[1]}"
-            figname += ".png"
-            figpath = op.join(outdir, figname)
-            save_figure(fig, figpath)
+            windowstr = f"{window[0]}-{window[1]}" if window else None
+            figname = cf_utils.name_with_params("trf",
+                ["sub", "run", "space", "pick", "feats", "window"],
+                [sub, run, space, pick, feats, windowstr])
+            figpath = cf_utils.path_with_components(outdir, figname, "png")
+            cf_utils.save_figure(fig, figpath)
 
 if __name__ == '__main__':
     main()
