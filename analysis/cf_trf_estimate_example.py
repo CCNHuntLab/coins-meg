@@ -135,7 +135,7 @@ def main():
             # In sensor space:
             # Calculate the Root-mean-square amplitude across the sensors to mirror
             # the behavior of mne.viz.plot_compare_evokeds()
-            trfs = np.sqrt(trf_model.coef_ ** 2).mean(axis=0)
+            trfs = np.sqrt((trf_model.coef_ ** 2).mean(axis=0))
             title = f"TRFs for {pick} sensors (mean RMS amplitude across sensors)"
         #
         # Plot the TRFs of the selected parcels
