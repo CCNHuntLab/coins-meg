@@ -1,5 +1,5 @@
 """
-Utility functions that Cedric likes to use
+Utility functions for analysis scripts
 """
 
 import matplotlib as mpl
