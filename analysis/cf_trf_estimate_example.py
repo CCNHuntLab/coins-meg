@@ -176,18 +176,12 @@ def main():
     Ys = {}
     for k in ["parcels", "mag", "grad"]:
         Ys[k] = data[k].T
-    # Y_parcels = parcels_data.T
-    # Y_mag = sensors_data_mag.T
-    # Y_grad = sensors_data_grad.T
 
     # Decimate if needed
     if downsamp != 1 and downsamp_method == "decimate":
         X = X[::downsamp, :]
         for k, Y in Ys.items():
             Ys[k] = Y[::downsamp, :]
-        # Y_parcels = Y_parcels[::downsamp, :]
-        # Y_mag = Y_mag[::downsamp, :]
-        # Y_grad = Y_grad[::downsamp, :]
 
     print(f"X shape: {X.shape}")
     print(f"""Y parcels shape: {Ys["parcels"].shape}""")
