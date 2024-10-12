@@ -89,8 +89,8 @@ def main():
     do_plot_dmtx = False
 
     # Output directory in which the results will be saved
-    outdir = "./analysis/results"
-    # outdir = "./gitignore/results"
+    # outdir = "./analysis/results"
+    outdir = "./gitignore/results"
     cf_utils.create_dir_if_needed(outdir)
 
     ########################################################
