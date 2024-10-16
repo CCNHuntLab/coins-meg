@@ -107,7 +107,7 @@ def main():
     paths['sensorspc'] = op.join(coinsmeg.PREPROCESSED_DIR, subdir, fname)
     # Parcellated, source-space MEG data
     # (this file was created by the code in 3_coregister_manual.ipynb))
-    subdir = f"src/sub-{sub:02d}_sub-{sub:02d}"
+    subdir = f"src/sub-{sub:02d}_run-{run:d}"
     fname = "parc_raw.fif"
     paths["sourcespc"] = op.join(coinsmeg.DERIVATIVES_DIR, subdir, fname)
     if do_locally:
