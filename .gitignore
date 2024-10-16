@@ -55,3 +55,6 @@ Thumbs.db
 dask-worker-space/
 *.dirlock
 *.lock
+
+# custom directory to ignore
+gitignore/
