@@ -1,47 +1,19 @@
 """
-Estimate the TRFs (temporal response functions) to laser and button events
-using example data from the COINS-MEG dataset.
+Estimate the TRFs (temporal response functions) to events at the subject level.
 
-This scripts performs several TRFs estimation using either source space and
-sensor space data.
+This scripts performs separate TRFs estimation for each type of MEG data:
+parcellated source-space data ('parcels'), sensor-space magnetometer data ('mag'),
+and sensor-space gradiometer data ('grad').
 """
 
 import cf_utils
+import cf_trf
 import coinsmeg_data as coinsmeg
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
 import osl
 import os.path as op
-import sklearn.linear_model
-
-class RidgeWithNan(sklearn.linear_model.Ridge):
-    """Subclass of scikit-learn's Ridge estimator that can handle NaN values
-    in the data. The strategy for dealing with NaNs is to discard rows
-    from X and Y where a NaN value is present in either X or Y."""
-
-    def _nan_rows(self, X):
-        if X.ndim == 2:
-            return np.isnan(X).any(axis=1)
-        elif X.ndim == 1:
-            return np.isnan(X)
-
-    def _remove_nan(self, X, Y):
-        # Find the row indices where there is a NaN value in either X or Y
-        assert X.ndim == 2 and Y.ndim == 2
-        nan_rows = self._nan_rows(X) | self._nan_rows(Y)
-        # Filter out the rows with NaN values
-        X = X[~nan_rows]
-        Y = Y[~nan_rows]
-        return X, Y
-
-    def fit(self, X, y, sample_weight=None):
-        X, y = self._remove_nan(X, y)
-        return super().fit(X, y, sample_weight=sample_weight)
-
-    def score(self, X, y, sample_weight=None):
-        X, y = self._remove_nan(X, y)
-        return super().score(X, y, sample_weight=sample_weight)
 
 
 def main():
@@ -49,7 +21,7 @@ def main():
     # Parameters for the analysis
     ########################################################
 
-     # Subject and run to use for the TRF estimation
+    # Subject and run to use for the TRF estimation
     sub = 17
     run = 1
 
@@ -222,7 +194,7 @@ def main():
 
         for alpha in alphas:
             # Create the TRF model
-            estimator = (alpha if no_reject else RidgeWithNan(
+            estimator = (alpha if no_reject else cf_trf.RidgeWithNan(
                 alpha=alpha, fit_intercept=True))
             trf_model = mne.decoding.ReceptiveField(tmin, tmax, sfreq,
                 feature_names=feat_names, estimator=estimator)

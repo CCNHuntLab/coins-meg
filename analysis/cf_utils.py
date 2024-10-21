@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import os
 import os.path as op
 
+LOCAL_BASE_DIR = "/Users/cedric/Code_and_Repositories/ContInf_-_Code/coins-meg_data"
+
 #
 # Saving outputs
 #
