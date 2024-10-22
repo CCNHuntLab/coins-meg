@@ -1,6 +1,5 @@
 """
-Estimate the TRFs (temporal response functions) to events at the subject level,
-across runs.
+Estimate the TRFs (temporal response functions) to events for a given run and subject.
 
 This scripts performs separate TRFs estimation for each type of MEG data:
 parcellated source-space data ('parcels'), sensor-space magnetometer data ('mag'),
@@ -12,30 +11,37 @@ import cf_trf
 import coinsmeg_data as coinsmeg
 import matplotlib.pyplot as plt
 
+
 def main():
     ########################################################
     # Parameters for the analysis
     ########################################################
 
-    # Subject to use for the TRF estimation
+    # Subject and run to use for the TRF estimation
     sub = 17
+    run = 1
 
     # Names of the events for which we want to estimate a TRF 
     event_names = ["laserHit", "laserMiss"]
+    # event_names = ["keyLeft", "keyRight"]
 
     # Time window for the TRF
     tmin = -0.5
     tmax = 1.0
 
+    # Parcel number whose TRF we will plot and save, when estimating in source space.
+    i_parcel = 2
+
     # Whether to reject or skip rejecting bad segments, as defined by annotations
     no_reject = False
 
-    # Downsampling factor to use for the TRF estimation
+    # Downsampling factor to use for the TRF estimation (this saves memory and
+    # compute time, but also improves statistical estimation due to decreasing
+    # the number of beta coefficients to estimate)
     downsamp = 10
 
     # Method to downsample: "resample" or "decimate"
     downsamp_method = "resample"
-    # downsamp_method = "decimate"
     downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
 
     # Ridge regularization parameter values to use for the TRF estimation
@@ -49,9 +55,6 @@ def main():
     # Whether to plot and save the design matrix
     do_plot_dmtx = True
 
-    # Parcel number whose TRF we will plot and save, when estimating in source space.
-    i_parcel = 2
-
     # Output directory in which the results will be saved
     # outdir = "./analysis/results"
     outdir = "./gitignore/results"
@@ -61,7 +64,7 @@ def main():
     # Analysis code
     ########################################################
 
-    XY = cf_trf.get_XY(sub, event_names, do_locally=do_locally,
+    XY = cf_trf.get_XY_singlerun(sub, run, event_names, do_locally=do_locally,
         tmin=tmin, tmax=tmax, downsamp=downsamp, downsamp_method=downsamp_method,
         no_reject=no_reject)
     X = XY["X"]
@@ -74,7 +77,7 @@ def main():
     print(f"""Y grad shape: {Ys["grad"].shape}""")
 
     #
-    # Plot the design matrix if needed
+    # Plot the design matrix
     #
 
     cf_utils.setup_mpl_style()
@@ -83,10 +86,10 @@ def main():
 
     if do_plot_dmtx:
         ax = cf_trf.plot_design_matrix(X, event_names)
-        figname = cf_utils.name_with_params("trf-allruns-design-matrix",
-            ["sub", "events", downsamp_name], [sub, events, downsamp])
-        figpath = cf_utils.path_with_components(outdir, figname, "png")
         fig = ax.get_figure()
+        figname = cf_utils.name_with_params("trf-design-matrix",
+            ["sub", "run", "events", downsamp_name], [sub, run, events, downsamp])
+        figpath = cf_utils.path_with_components(outdir, figname, "png")
         cf_utils.save_figure(fig, figpath)
 
     #
@@ -114,29 +117,43 @@ def main():
                 title = f"TRFs for parcel {i_parcel} in {space} space"
             else:
                 # In sensor space:
-                # Calculate the RMS across sensors of the beta coefficients
+                # Calculate the RMS across sensors of the beta coefficients,
+                # to mirror the behavior of mne.viz.plot_compare_evokeds(),
+                # so that we can compare with Epoched ERFs.
                 trfs = cf_trf.calculate_rms_trf(trf_model)
                 title = f"TRFs for {pick} sensors (RMS amplitude)"
-            
+            #
             # Plot the TRFs
-            fig, ax = plt.subplots(figsize=(cf_utils.A4_PAPER_CONTENT_WIDTH / 2,
-                                            cf_utils.DEFAULT_HEIGHT))
-            trf_times = trf_model.delays_ / sfreq
-            for i, trf in enumerate(trfs):
-                ax.plot(trf_times, trf, '-', label=f"{event_names[i]}")
-            ax.legend()
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Beta coefficient")
-            ax.set_title(title)
-            ax.axvline(0, ls=":", color="black")
+            #
 
-            # Save the figure
-            figname = cf_utils.name_with_params("trf-allruns",
-                ["sub", "space", "pick", "events", downsamp_name, "alpha", "no-reject"],
-                [sub, space, pick, events, downsamp, alpha, no_reject]
-                )
-            figpath = cf_utils.path_with_components(outdir, figname, "png")
-            cf_utils.save_figure(fig, figpath)
+            for window in [None, 
+                # (tmin+1/sfreq, tmax-1/sfreq)
+                ]:
+                fig, ax = plt.subplots(figsize=(cf_utils.A4_PAPER_CONTENT_WIDTH / 2,
+                                                cf_utils.DEFAULT_HEIGHT))
+                trf_times = trf_model.delays_ / sfreq
+                start = (int((window[0]-tmin) * sfreq)
+                            if window is not None
+                            else 0)
+                end = (int((trf_times.shape[0] - (tmax-window[1]) * sfreq))
+                    if window is not None
+                    else trf_times.shape[0])
+                for i, trf in enumerate(trfs):
+                    ax.plot(trf_times[start:end], trf[start:end], '-', label=f"{event_names[i]}")
+                ax.legend()
+                ax.set_xlabel("Time (s)")
+                ax.set_ylabel("Beta coefficient")
+                ax.set_title(title)
+                ax.axvline(0, ls=":", color="black")
+
+                # Save the figure
+                windowstr = f"{window[0]}-{window[1]}" if window else None
+                figname = cf_utils.name_with_params("trf",
+                    ["sub", "run", "space", "pick", "events", downsamp_name, "alpha", "no-reject",  "window"],
+                    [sub, run, space, pick, events, downsamp, alpha, no_reject, windowstr]
+                    )
+                figpath = cf_utils.path_with_components(outdir, figname, "png")
+                cf_utils.save_figure(fig, figpath)
 
 if __name__ == '__main__':
     main()
