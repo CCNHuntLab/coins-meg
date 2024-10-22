@@ -48,21 +48,23 @@ def get_XY(sub, event_names, runs=coinsmeg.RUNS, **kwargs):
     See get_XY_singlerun() for more details on the X and Y, and the parameters
     and return value of this function.
     """
-    Ykeys = DATA_TYPES
     Xs = []
-    Ys = {k: [] for k in Ykeys}
+    Ys = None
     sfreq = None
     for run in runs:
         XY = get_XY_singlerun(sub, run, event_names,
             **kwargs)
         Xs += [XY["X"]]
+        if Ys is None:
+            Ykeys = XY["Y"].keys()
+            Ys = {k: [] for k in Ykeys}
         for k, v in XY["Y"].items():
             Ys[k] += [v]
         if sfreq is None:
             sfreq = XY["sfreq"]
     return {
         "X": np.concatenate(Xs, axis=0),
-        "Y": {k: np.concatenate(Ys[k], axis=0) for k in Ykeys},
+        "Y": {k: np.concatenate(Ys[k], axis=0) for k in Ys.keys()},
         "sfreq": sfreq
     }
 
@@ -71,7 +73,8 @@ def get_XY_singlerun(sub, run, event_names,
     do_locally=False,
     tmin=-0.5, tmax=1.0,
     downsamp=10, downsamp_method="resample",
-    no_reject=False):
+    no_reject=False,
+    spaces=["sensor", "source"]):
     """
     Create X and Y arrays for the TRF estimation with the given subject and run./
     
@@ -116,21 +119,29 @@ def get_XY_singlerun(sub, run, event_names,
         XY["Y"]: dictionary of of numpy arrays, one for each data type.
         XY["sfreq"]: sampling frequency
     """
+    if spaces is None or len(spaces) == 0:
+        return None
+
     # File paths to the data for the given subject and run
     paths = {}
-    paths["sensorspc"] = coinsmeg.get_sub_preproc_raw_fpath(sub, run)
-    paths["sourcespc"] = coinsmeg.get_sub_src_parc_fpath(sub, run)
+    if "sensor" in spaces:
+        paths["sensorspc"] = coinsmeg.get_sub_preproc_raw_fpath(sub, run)
+    if "source" in spaces:
+        paths["sourcespc"] = coinsmeg.get_sub_src_parc_fpath(sub, run)
     if do_locally:
         for k, fpath in paths.items():
-            paths[k] = fpath.replace(coinsmeg.BASE_DIR, utils.LOCAL_BASE_DIR)
+            paths[k] = utils.get_local_path_for_data(fpath)
+            # paths[k] = fpath.replace(coinsmeg.BASE_DIR, utils.LOCAL_BASE_DIR)
 
     # Get sensor-space and source-space data as MNE.Raw objects
     raws = {}
-    raws["sensorspc"] = mne.io.read_raw_fif(paths["sensorspc"])
-    raws["sourcespc"] = mne.io.read_raw(paths["sourcespc"])
+    if "sensor" in spaces:
+        raws["sensorspc"] = mne.io.read_raw_fif(paths["sensorspc"])
+    if "source" in spaces:
+        raws["sourcespc"] = mne.io.read_raw(paths["sourcespc"])
 
-    srcspace_info = raws["sourcespc"].info
-    original_sfreq = srcspace_info["sfreq"]
+    info = raws["sourcespc"].info if "source" in spaces else raws["sensorspc"].info
+    original_sfreq = info["sfreq"]
     sfreq = original_sfreq / downsamp
 
     # Resample the data if requested
@@ -143,26 +154,33 @@ def get_XY_singlerun(sub, run, event_names,
 
     # Find the indices corresponding to the parcels data vs the stim channel
     # in the source-space raw data array
-    i_all_parcels = mne.pick_types(srcspace_info, misc=True)
-    i_stim = mne.pick_types(srcspace_info, stim=True)[0]
+    if "source" in spaces:
+        i_all_parcels = mne.pick_types(info, misc=True)
+        i_stim = mne.pick_types(info, stim=True)[0]
 
     # Load the MEG data and create the corresponding Y arrays
     data = {}
     reject_by_annotation = None if no_reject else "NaN"
-    data["parcels"] = raws["sourcespc"].get_data(i_all_parcels, 
-        reject_by_annotation=reject_by_annotation)[:, ::decim] # shape (n_parcels, n_samples)
-    for k in ["mag", "grad"]:
-        data[k] = raws["sensorspc"].get_data(picks=k,
-            reject_by_annotation=reject_by_annotation)[:, ::decim] # shape (n_channels, n_samples)
+    if "source" in spaces:
+        data["parcels"] = raws["sourcespc"].get_data(i_all_parcels, 
+            reject_by_annotation=reject_by_annotation)[:, ::decim] # shape (n_parcels, n_samples)
+    if "sensor" in spaces:
+        for k in ["mag", "grad"]:
+            data[k] = raws["sensorspc"].get_data(picks=k,
+                reject_by_annotation=reject_by_annotation)[:, ::decim] # shape (n_channels, n_samples)
     Y = {}
-    for k in DATA_TYPES:
+    for k in data.keys():
         Y[k] = data[k].T
 
     # Load the stimulus event data and create the corresponding X array,
     # focusing on the given events of interest.
     ev_ids = [coinsmeg.EVENT_ID[fn] for fn in event_names]
-    stim = raws["sourcespc"].get_data([i_stim],
-        reject_by_annotation=reject_by_annotation)[0][::decim] # shape (n_samples, )
+    if "source" in spaces:
+        stim = raws["sourcespc"].get_data([i_stim],
+            reject_by_annotation=reject_by_annotation)[0][::decim] # shape (n_samples, )
+    else:
+        stim = raws["sensorspc"].get_data(picks="stim",
+            reject_by_annotation=reject_by_annotation)[0][::decim] # shape (n_samples, )
     X = np.stack([(stim == ev_id) for ev_id in ev_ids],
         axis=1).astype(float) # shape (n_samples, n_features)
 

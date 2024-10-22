@@ -57,21 +57,25 @@ def main():
     outdir = "./gitignore/results"
     cf_utils.create_dir_if_needed(outdir)
 
+    spaces = ["source", "sensor"]
+
     ########################################################
     # Analysis code
     ########################################################
 
     XY = cf_trf.get_XY(sub, event_names, do_locally=do_locally,
         tmin=tmin, tmax=tmax, downsamp=downsamp, downsamp_method=downsamp_method,
-        no_reject=no_reject)
+        no_reject=no_reject, spaces=spaces)
     X = XY["X"]
     Ys = XY["Y"]
     sfreq = XY["sfreq"]
 
     print(f"X shape: {X.shape}")
-    print(f"""Y parcels shape: {Ys["parcels"].shape}""")
-    print(f"""Y mag shape: {Ys["mag"].shape}""")
-    print(f"""Y grad shape: {Ys["grad"].shape}""")
+    if "source" in spaces:
+        print(f"""Y parcels shape: {Ys["parcels"].shape}""")
+    if "sensor" in spaces:
+        print(f"""Y mag shape: {Ys["mag"].shape}""")
+        print(f"""Y grad shape: {Ys["grad"].shape}""")
 
     #
     # Plot the design matrix if needed
