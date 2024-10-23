@@ -41,7 +41,8 @@ def main():
     downsamp = 10
 
     # Method to downsample: "resample" or "decimate"
-    downsamp_method = "resample"
+    # downsamp_method = "resample"
+    downsamp_method = "decimate"
     downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
 
     # Ridge regularization parameter values to use for the TRF estimation
@@ -120,7 +121,7 @@ def main():
                 # Calculate the RMS across sensors of the beta coefficients,
                 # to mirror the behavior of mne.viz.plot_compare_evokeds(),
                 # so that we can compare with Epoched ERFs.
-                trfs = cf_trf.calculate_rms_trf(trf_model)
+                trfs = cf_trf.calculate_rms_trf(trf_model.coef_)
                 title = f"TRFs for {pick} sensors (RMS amplitude)"
             #
             # Plot the TRFs
