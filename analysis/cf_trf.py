@@ -203,11 +203,11 @@ def create_trf_model(event_names, sfreq, tmin=-0.5, tmax=1.0,
     return mne.decoding.ReceptiveField(tmin, tmax, sfreq,
                 feature_names=event_names, estimator=estimator)
 
-def calculate_rms_trf(trf_model):
+def calculate_rms_trf(trf_model_coef):
     """
     Calculate the RMS across sensors of the beta coefficients,
     mirroring the behavior of mne.viz.plot_compare_evokeds(),
     so that we can compare with Epoched ERFs.
     """
-    return np.sqrt((trf_model.coef_ ** 2).mean(axis=0))
+    return np.sqrt((trf_model_coef ** 2).mean(axis=0))
     
