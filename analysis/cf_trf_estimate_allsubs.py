@@ -216,7 +216,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dont_recompute", action='store_true', default=False)
     parser.add_argument("--do_only_dmtx", action='store_true', default=False)
-    parser.add_argument("--downsamp", default=10)
+    parser.add_argument("--downsamp", type=int, default=10)
     parser.add_argument("-ev", "--events", nargs="+", type=str,
         default=["laserHit", "laserMiss"])
     args = parser.parse_args()
