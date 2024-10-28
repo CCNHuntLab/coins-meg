@@ -20,6 +20,8 @@ import numpy as np
 import coinsmeg_data as coinsmeg
 from IPython.display import HTML, display
 import mne
+from glob import glob
+import pathlib
 
 # functions
 def copy_polhemus_files(recon_dir, subject, preproc_file, smri_file, logger):
@@ -39,7 +41,9 @@ def copy_polhemus_files(recon_dir, subject, preproc_file, smri_file, logger):
 
 ############## ------- Directories ---------- ############
 
-preproc_dir = op.join(coinsmeg.DERIVATIVES_DIR, "preprocessed")
+# Directories
+DATA_DIR = coinsmeg.RAW_DIR # this is the same as BASE_DIR as raw data is stored in the base directory
+preproc_dir = coinsmeg.PREPROCESSED_DIR
 recon_dir = op.join(coinsmeg.DERIVATIVES_DIR, "recon")
 
 # Get subjects
