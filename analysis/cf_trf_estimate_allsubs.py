@@ -32,7 +32,7 @@ def main(args):
     no_reject = False
 
     # Downsampling factor to use for the TRF estimation
-    downsamp = 10
+    downsamp = args.downsamp # default: 10
 
     # Method to downsample: "resample" or "decimate"
     # downsamp_method = "resample"
@@ -131,6 +131,8 @@ def main(args):
                 figpath = cf_utils.path_with_components(outdir, figname, "png")
                 fig = ax.get_figure()
                 cf_utils.save_figure(fig, figpath)
+            if args.do_only_dmtx:
+                continue
             # Estimate the TRFs
             for k, Y in Ys.items():
                 # Create the TRF model
@@ -213,6 +215,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dont_recompute", action='store_true', default=False)
+    parser.add_argument("--do_only_dmtx", action='store_true', default=False)
+    parser.add_argument("--downsamp", default=10)
     parser.add_argument("-ev", "--events", nargs="+", type=str,
         default=["laserHit", "laserMiss"])
     args = parser.parse_args()
