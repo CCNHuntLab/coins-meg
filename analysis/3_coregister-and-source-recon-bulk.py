@@ -1,4 +1,5 @@
-"""Coregistration and source reconstruction AXL 28/10/24
+"""Coregistration and source reconstruction 
+Created AXL 28/10/24
 
 The script should be first run for all subjects. Then for subjects
 whose coregistration looked a bit off we re-run this script just for that
@@ -9,7 +10,6 @@ This does not use OSL batch utils/config-file setup.
 
 ############## ------- Import packages and define functions needed ---------- ############
 
-import re
 import os
 import os.path as op
 import osl
@@ -18,10 +18,8 @@ from osl import utils
 from osl import source_recon
 import numpy as np
 import coinsmeg_data as coinsmeg
-import open3d
 from IPython.display import HTML, display
 import mne
-import warnings
 
 # functions
 def copy_polhemus_files(recon_dir, subject, preproc_file, smri_file, logger):
