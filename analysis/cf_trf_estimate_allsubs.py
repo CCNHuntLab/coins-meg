@@ -11,17 +11,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os.path as op
 
-def main(dont_recompute=False):
-    """
-    dont_recompute: If True, the TRF estimates are loaded from the results of
-    an earlier run rather than recomputed, if such results are available.
-    """
+def main(args):
     ########################################################
     # Parameters for the analysis
     ########################################################
 
+    # dont_recompute: If True, the TRF estimates are loaded from the results of
+    # an earlier run rather than recomputed, if such results are available.
+    dont_recompute = args.dont_recompute
+
     # Names of the events for which we want to estimate a TRF 
-    event_names = ["laserHit", "laserMiss"]
+    event_names = args.events # default: ["laserHit", "laserMiss"]
     events = '-'.join([str(coinsmeg.EVENT_ID[ev]) for ev in event_names])
 
     # Time window for the TRF
@@ -63,7 +63,7 @@ def main(dont_recompute=False):
     cf_utils.setup_mpl_style()
 
     for sub in coinsmeg.SUB_NUMS_ALL:
-        print("Subject", sub)
+        print(f"Running subject {sub}")
 
         outdir = op.join(outdir_parent, coinsmeg.sub_num2str(sub))
         cf_utils.create_dir_if_needed(outdir)
@@ -80,8 +80,6 @@ def main(dont_recompute=False):
             coinsmeg.get_sub_preproc_raw_fpath(sub, run), do_locally)) for run in coinsmeg.RUNS])
         has_all_sourcespc_data = all([op.exists(cf_utils.get_path_for_data(
             coinsmeg.get_sub_src_parc_fpath(sub, run), do_locally)) for run in coinsmeg.RUNS])
-        print("has_all_sensorspc_data", has_all_sensorspc_data)
-        print("has_all_sourcespc_data", has_all_sourcespc_data)
         if has_all_sensorspc_data:
             spaces += ["sensor"]
             datatypes += ["mag", "grad"]
@@ -90,6 +88,7 @@ def main(dont_recompute=False):
             datatypes += ["parcels"]
 
         if len(spaces) == 0 or len(datatypes) == 0:
+            print("Skipping this subject because we don't have all the data")
             continue
 
     ########################################################
@@ -214,5 +213,7 @@ def main(dont_recompute=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dont_recompute", action='store_true', default=False)
+    parser.add_argument("-ev", "--events", nargs="+", type=str,
+        default=["laserHit", "laserMiss"])
     args = parser.parse_args()
-    main(dont_recompute=args.dont_recompute)
+    main(args)
