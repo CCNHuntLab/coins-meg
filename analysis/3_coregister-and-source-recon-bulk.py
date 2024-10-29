@@ -19,12 +19,17 @@ from osl import source_recon
 import numpy as np
 import coinsmeg_data as coinsmeg
 from IPython.display import HTML, display
-import mne
 from glob import glob
 import pathlib
 
+import mne
+from mne import read_forward_solution 
+
+from osl.source_recon.rhino.polhemus import extract_polhemus_from_info
+from osl.source_recon import rhino, beamforming, parcellation # for calculating beamformer weights
+
 # functions
-def copy_polhemus_files(recon_dir, subject, preproc_file, smri_file, logger):
+def copy_polhemus_files(polhemus_dir, recon_dir, subject):
     polhemus_headshape = np.loadtxt(op.join(polhemus_dir, 'polhemus_headshape.txt'))
     polhemus_nasion = np.loadtxt(op.join(polhemus_dir, 'polhemus_nasion.txt'))
     polhemus_rpa = np.loadtxt(op.join(polhemus_dir, 'polhemus_rpa.txt'))
@@ -42,14 +47,18 @@ def copy_polhemus_files(recon_dir, subject, preproc_file, smri_file, logger):
 ############## ------- Directories ---------- ############
 
 # Directories
-DATA_DIR = coinsmeg.RAW_DIR # this is the same as BASE_DIR as raw data is stored in the base directory
+data_dir = coinsmeg.RAW_DIR # this is the same as BASE_DIR as raw data is stored in the base directory
 preproc_dir = coinsmeg.PREPROCESSED_DIR
 recon_dir = op.join(coinsmeg.DERIVATIVES_DIR, "recon")
+
+# Setting of which parcellation file to use
+parcellation_version = 'HarvOxf-sub-Schaefer100-combined-2mm_4d_ds8'
+parcellation_fname = parcellation_version + '.nii.gz'
 
 # Get subjects
 subs = []
 
-data_sub_folders = sorted(filter(lambda path: "sub-" in path, glob(DATA_DIR + '/*'))) # returns a list of paths e.g., '/ohba/pi/lhunt/datasets/coins-meg_data/sub-22'
+data_sub_folders = sorted(filter(lambda path: "sub-" in path, glob(data_dir + '/*'))) # returns a list of paths e.g., '/ohba/pi/lhunt/datasets/coins-meg_data/sub-22'
 
 for subject in data_sub_folders:
     subs.append(pathlib.Path(subject).stem) # subs is now a list of ['sub-01', 'sub-02', ...]
@@ -62,13 +71,11 @@ for sub in subs:
 
 print(sub_run_combos)
 
-# test with only two sub/run combos
-sub_run_combos =['sub-04_run-1','sub-04_run-2']
-
-
 ############## -------  Run coregistration and source reconstruction   ---------- ############
 
 for sub_run_combo in sub_run_combos:
+    
+    print(f"Starting coregistration and source reconstruction for {sub_run_combo}")
 
     # extract the subject and run id
     subject_id, run_id = sub_run_combo.split('_') # will produce subject_id = 'sub-XX', run_id = 'run-X'
@@ -94,8 +101,6 @@ for sub_run_combo in sub_run_combos:
     # make directory if it doesn't yet exist
     os.makedirs(polhemus_dir, exist_ok=True)
 
-    from osl.source_recon.rhino.polhemus import extract_polhemus_from_info
-
     extract_polhemus_from_info(
         fif_file = fif_file,
         headshape_outfile=op.join(polhemus_dir, "polhemus_headshape.txt"),
@@ -108,7 +113,7 @@ for sub_run_combo in sub_run_combos:
     # f"--maxpath /neuro/bin/util/maxfilter --mode multistage --scanner Neo --tsss --headpos --movecomp --trans {trans_file}",)
             #  the maxfilter aligns all runs of a participant so that the head position is the same within each participant
     
-    copy_polhemus_files(recon_dir, sub_run_combo, [], [], [])
+    copy_polhemus_files(polhemus_dir, recon_dir, sub_run_combo)
 
     # Then we run the coreg, for real.
 
@@ -144,8 +149,6 @@ for sub_run_combo in sub_run_combos:
         filename=f"{recon_dir}/{sub_run_combo}/rhino/coreg/bem_display_plot.html",
     )
 
-    from mne import read_forward_solution
-
     # load forward solution
     fwd_fname = op.join(recon_dir, sub_run_combo, "rhino", "model-fwd.fif") 
     # tutorial said source_recon.rhino.get_coreg_filenames(recon_dir, subjects[0])["forward_model_file"]
@@ -155,8 +158,6 @@ for sub_run_combo in sub_run_combos:
     fwd = read_forward_solution(fwd_fname)
     leadfield = fwd["sol"]["data"]
     print("Leadfield size : %d sensors x %d dipoles" % leadfield.shape)
-
-    import mne
 
     # Temporal filtering
 
@@ -177,7 +178,6 @@ for sub_run_combo in sub_run_combos:
     print("Completed")
 
     # Compute BEAMFORMER WEIGHTS
-    from osl.source_recon import rhino, beamforming, parcellation
       
     # Make LCMV beamformer filters
     # Note that this will exclude any bad time segments when calculating the beamformer filters
@@ -203,10 +203,9 @@ for sub_run_combo in sub_run_combos:
                                                     reference_brain="mni")
 
     print("Completed")
-    print("Dimensions of reconstructed timeseries in MNI space is (dipoles x all_tpts) = {}".format(recon_timeseries_mni.shape))
+    print(f"Dimensions of reconstructed timeseries in MNI space is (dipoles x all_tpts) = {recon_timeseries_mni.shape}")
 
     # PARCELLATION
-    parcellation_fname = 'HarvOxf-sub-Schaefer100-combined-2mm_4d_ds8.nii.gz'
 
     print("Parcellating data")
 
@@ -222,7 +221,7 @@ for sub_run_combo in sub_run_combos:
     )
 
     print("Completed")
-    print("Dimensions of parcel timeseries in MNI space is (nparcels x all_tpts) = {}".format(parcel_ts.shape))
+    print(f"Dimensions of parcel timeseries in MNI space is (nparcels x all_tpts) = {parcel_ts.shape}")
 
     # Create mne raw object for the parcellated data
 
@@ -233,8 +232,8 @@ for sub_run_combo in sub_run_combos:
     print("Dimensions of parc_raw are (nparcels x all_tpts) = {}".format(parc_raw.get_data().shape))
 
     # source space data directory
-    src_dir = op.join(coinsmeg.DERIVATIVES_DIR, "src", sub_run_combo) # directory for saving source reconstructed files
-    os.makedirs(src_dir, exist_ok=True)
+    parc_dir = op.join(coinsmeg.SRC_DIR, sub_run_combo, parcellation_version) # directory for saving the parcellated file
+    os.makedirs(parc_dir, exist_ok=True)
 
     # save parc_raw into the src_dir
-    parc_raw.save(op.join(src_dir, "parc_raw.fif"), overwrite=True)
+    parc_raw.save(op.join(parc_dir, "parc_raw.fif"), overwrite=True)

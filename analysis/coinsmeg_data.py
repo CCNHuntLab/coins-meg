@@ -35,6 +35,8 @@ DERIVATIVES_DIR = op.join(BASE_DIR, "derivatives")
 # Directory containing preprocessed data.
 PREPROCESSED_DIR = op.join(DERIVATIVES_DIR, "preprocessed")
 
+# Directory containing source-space parcellated data
+SRC_DIR = op.join(DERIVATIVES_DIR, "src")
 #
 # Definitions related to the subjects in the dataset.
 #
