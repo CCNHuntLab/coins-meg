@@ -70,7 +70,6 @@ def main():
         no_reject=no_reject)
     X = XY["X"]
     Ys = XY["Y"]
-    sfreq = XY["sfreq"]
 
     print(f"X shape: {X.shape}")
     print(f"""Y parcels shape: {Ys["parcels"].shape}""")
@@ -100,6 +99,7 @@ def main():
     for k, Y in Ys.items():
         space = "source" if k == "parcels" else "sensor"
         pick = f"parcel-{i_parcel}" if k == "parcels" else k
+        sfreq = XY["Y_info"][k]["sfreq"]
 
         for alpha in alphas:
             # Create the TRF model
@@ -150,8 +150,8 @@ def main():
                 # Save the figure
                 windowstr = f"{window[0]}-{window[1]}" if window else None
                 figname = cf_utils.name_with_params("trf",
-                    ["sub", "run", "space", "pick", "events", downsamp_name, "alpha", "no-reject",  "window"],
-                    [sub, run, space, pick, events, downsamp, alpha, no_reject, windowstr]
+                    ["sub", "run", "events", "space", "pick", downsamp_name, "alpha", "no-reject",  "window"],
+                    [sub, run, events, space, pick, downsamp, alpha, no_reject, windowstr]
                     )
                 figpath = cf_utils.path_with_components(outdir, figname, "png")
                 cf_utils.save_figure(fig, figpath)

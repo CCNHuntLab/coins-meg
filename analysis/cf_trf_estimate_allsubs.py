@@ -16,7 +16,7 @@ def main(args):
     # Parameters for the analysis
     ########################################################
 
-    # dont_recompute: If True, the TRF estimates are loaded from the results of
+    # dont_recompute: If True, the TRFs are loaded from the results of
     # an earlier run rather than recomputed, if such results are available.
     dont_recompute = args.dont_recompute
 
@@ -49,17 +49,19 @@ def main(args):
 
     # Whether to plot and save the design matrix
     do_plot_dmtx = True
-    # Whether to save the TRF model estimates (beta coefficient)
+    # Whether to save the TRFs.
     do_save_trfs = True
-    # Whether to plot the TRFs. In source space, this will plot the TRF on a
-    # per-parcel basis. In sensor-space, this will plot the average amplitude
-    # (root mean square) of the TRFs across sensors.
+    # Whether to plot the TRFs.
     do_plot_trfs = True
 
     # Output directory in which the results will be saved
     outdir_parent = "./gitignore/results"
-    cf_utils.create_dir_if_needed(outdir_parent)
 
+    ########################################################
+    # Analysis code
+    ########################################################
+
+    cf_utils.create_dir_if_needed(outdir_parent)
     cf_utils.setup_mpl_style()
 
     for sub in coinsmeg.SUB_NUMS_ALL:
@@ -72,10 +74,6 @@ def main(args):
         # all the source-space/sensor-space data for this subject
         spaces = []
         datatypes = []
-        # sensorspc_data_paths = [cf_utils.get_path_for_data(
-        #     coinsmeg.get_sub_preproc_raw_fpath(sub, run), do_locally) for run in coinsmeg.RUNS]
-        # sourcespc_data_paths = [cf_utils.get_path_for_data(
-        #     coinsmeg.get_sub_src_parc_fpath(sub, run), do_locally) for run in coinsmeg.RUNS]
         has_all_sensorspc_data = all([op.exists(cf_utils.get_path_for_data(
             coinsmeg.get_sub_preproc_raw_fpath(sub, run), do_locally)) for run in coinsmeg.RUNS])
         has_all_sourcespc_data = all([op.exists(cf_utils.get_path_for_data(
@@ -91,30 +89,27 @@ def main(args):
             print("Skipping this subject because we don't have all the data")
             continue
 
-    ########################################################
-    # Analysis code
-    ########################################################
-        # File path where the TRF estimates are saved
+        # File path where the TRFs are saved
         trf_fpath = {}
         for k in datatypes:
-            paramkeys = ["sub", "datatype", "events", downsamp_name, "alpha", "no-reject"]
-            paramvals = [sub, k, events, downsamp, alpha, no_reject]
-            trf_fname = cf_utils.name_with_params("trf", paramkeys,paramvals)
-            trf_fpath[k] = cf_utils.path_with_components(outdir, trf_fname, "npy")
-        trf_times_fname = cf_utils.name_with_params("trf-times",
-                ["tmin", "tmax", downsamp_name], [tmin, tmax, downsamp])
-        trf_times_fpath = cf_utils.path_with_components(outdir, trf_times_fname, "npy")
+            paramkeys = ["sub", "events", "datatype", downsamp_name, "alpha", "no-reject"]
+            paramvals = [sub, events, k, downsamp, alpha, no_reject]
+            trf_fname = cf_utils.name_with_params("trfs", paramkeys, paramvals)
+            trf_fname += "_ave" # MNE recommends the file name to end with "ave" for evoked instances
+            trf_fpath[k] = cf_utils.path_with_components(outdir, trf_fname, "fif")
         
-        # Load the TRF estimates if dont_recompute is True and they have been saved
+        #
+        # Load the TRFs if dont_recompute is True and they have been saved
         # from an earlier run
-        trf = {}
-        trf_times = None
+        #
+        trfsdict = {}
         if dont_recompute and all([op.exists(f) for f in trf_fpath.values()]):
             for k, f in trf_fpath.items():
-                trf[k] = np.load(f)
-            trf_times = np.load(trf_times_fpath)
+                trfsdict[k] = cf_trf.load_trfs(f)
 
-        # Compute the TRF estimates otherwise
+        #
+        # Compute the TRFs otherwise
+        #
         else:
             # Compute the X and Y matrices for the TRF estimation
             XY = cf_trf.get_XY(sub, event_names, do_locally=do_locally,
@@ -122,7 +117,6 @@ def main(args):
             no_reject=no_reject, spaces=spaces)
             X = XY["X"]
             Ys = XY["Y"]
-            sfreq = XY["sfreq"]
             # Plot the design matrix (X) if needed
             if do_plot_dmtx:
                 ax = cf_trf.plot_design_matrix(X, event_names)
@@ -133,35 +127,28 @@ def main(args):
                 cf_utils.save_figure(fig, figpath)
             if args.do_only_dmtx:
                 continue
-            # Estimate the TRFs
+            # Compute the TRFs from the X and Y matrices
             for k, Y in Ys.items():
+                Y_info = XY["Y_info"][k]
+                sfreq = Y_info["sfreq"]
                 # Create the TRF model
                 trf_model = cf_trf.create_trf_model(event_names, sfreq,
                     tmin=tmin, tmax=tmax, no_reject=no_reject, alpha=alpha)
-                # Estimate and extract the TRF model coefficients
-                trf_model.fit(X, Y)
-                trf[k] = trf_model.coef_
-                if trf_times is None:
-                    trf_times = trf_model.delays_ / sfreq
-            # Save the TRFs
-            if do_save_trfs:
-                for k in trf.keys():
-                    np.save(trf_fpath[k], trf[k])
-                    print(f"TRFs for {k} saved at {trf_fpath[k]}")
-                np.save(trf_times_fpath, trf_times)
-                print(f"TRF times saved at {trf_times_fpath}")
+                # Estimate the TRFs
+                trfsdict[k] = cf_trf.estimate_trfs(trf_model, X, Y, Y_info)
+                # Save the TRFs
+                if do_save_trfs:
+                    cf_trf.save_trfs(trfsdict[k], trf_fpath[k])
 
         #
         # Plot the TRFs
         #
         if do_plot_trfs:
-            for k, trfs in trf.items():
+            for k, trfs in trfsdict.items():
                 space = "source" if k == "parcels" else "sensor"
                 if space == "source":
                     picks = ["all", 2]
                 else:
-                    # In sensor space:
-                    # Calculate the RMS across sensors of the beta coefficients
                     picks = [k]
 
                 for pick in picks:
@@ -170,45 +157,33 @@ def main(args):
                         title += f", all parcels" if pick == "all" else f", parcel {pick}"
                     else:
                         title += f", {pick}"
-                    ylabel = "Beta coefficient" if space == "source" else "RMS amplitude"
+                    agg = None if type(pick) == int else "rms" 
+                    ylabel = "RMS amplitude" if agg == "rms" else "Beta coefficient"
 
                     fig, ax = plt.subplots(figsize=(cf_utils.A4_PAPER_CONTENT_WIDTH / 2,
                                                 cf_utils.DEFAULT_HEIGHT))
-                    if space == "source":
-                        # In source space:
-                        # Plot all parcels in one figure,
-                        # and plot a specific parcel on another figure
-                        if pick == "all":
-                            cmap = plt.get_cmap('tab10')
-                            for i_ev in range(trfs.shape[1]):
-                                ax.plot(trf_times, trfs[0, i_ev, :], '-',
-                                    label=f"{event_names[i_ev]}",
-                                    color=cmap(i_ev))
-                                ax.plot(trf_times, trfs[1:, i_ev, ].T, '-',
-                                    color=cmap(i_ev))
-                        else:
-                            for i_ev in range(trfs.shape[1]):
-                                ax.plot(trf_times, trfs[pick, i_ev, :], '-',
+                    if agg == "rms":
+                        # Calculate and plot the RMS across channels (sensors/parcels)
+                        # of the TRF beta coefficients
+                        for i_ev, trf_inst in enumerate(trfs):
+                            rms = cf_trf.calculate_rms_trf(trf_inst.data)
+                            ax.plot(trf_inst.times, rms.T, '-',
                                     label=f"{event_names[i_ev]}")
                     else:
-                        # In sensor space:
-                        # Calculate the RMS across sensors of the beta coefficients
-                        trfs_rms = cf_trf.calculate_rms_trf(trfs)
-                        for i_ev in range(trfs_rms.shape[0]):
-                                ax.plot(trf_times, trfs_rms[i_ev, :].T, '-',
+                        # Plot the TRF beta coefficients for the given picked channel
+                        for i_ev, trf_inst in enumerate(trfs):
+                            ax.plot(trf_inst.times, trf_inst.data[pick, :], '-',
                                     label=f"{event_names[i_ev]}")
-
                     ax.legend()
                     ax.set_xlabel("Time (s)")
                     ax.set_ylabel(ylabel)
                     ax.set_title(title)
                     ax.axvline(0, ls=":", color="black")
-                    
 
                     # Save the figure
                     figname = cf_utils.name_with_params("trf-plot",
-                        ["sub", "space", "pick", "events", downsamp_name, "alpha", "no-reject"],
-                        [sub, space, pick, events, downsamp, alpha, no_reject])
+                        ["sub", "events", "space", "pick", "agg", downsamp_name, "alpha", "no-reject"],
+                        [sub, events, space, pick, agg, downsamp, alpha, no_reject])
                     figpath = cf_utils.path_with_components(outdir, figname, "png")
                     cf_utils.save_figure(fig, figpath)
 

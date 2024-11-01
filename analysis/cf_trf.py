@@ -50,7 +50,7 @@ def get_XY(sub, event_names, runs=coinsmeg.RUNS, **kwargs):
     """
     Xs = []
     Ys = None
-    sfreq = None
+    Y_info = None
     for run in runs:
         XY = get_XY_singlerun(sub, run, event_names,
             **kwargs)
@@ -60,12 +60,12 @@ def get_XY(sub, event_names, runs=coinsmeg.RUNS, **kwargs):
             Ys = {k: [] for k in Ykeys}
         for k, v in XY["Y"].items():
             Ys[k] += [v]
-        if sfreq is None:
-            sfreq = XY["sfreq"]
+        if Y_info is None:
+            Y_info = XY["Y_info"]
     return {
         "X": np.concatenate(Xs, axis=0),
         "Y": {k: np.concatenate(Ys[k], axis=0) for k in Ys.keys()},
-        "sfreq": sfreq
+        "Y_info": Y_info
     }
 
 
@@ -131,7 +131,6 @@ def get_XY_singlerun(sub, run, event_names,
     if do_locally:
         for k, fpath in paths.items():
             paths[k] = utils.get_local_path_for_data(fpath)
-            # paths[k] = fpath.replace(coinsmeg.BASE_DIR, utils.LOCAL_BASE_DIR)
 
     # Get sensor-space and source-space data as MNE.Raw objects
     raws = {}
@@ -184,7 +183,24 @@ def get_XY_singlerun(sub, run, event_names,
     X = np.stack([(stim == ev_id) for ev_id in ev_ids],
         axis=1).astype(float) # shape (n_samples, n_features)
 
-    return {"X": X, "Y": Y, "sfreq": sfreq}
+    # Construct info object for each data type
+    Y_info = {}
+    for k in Y.keys():
+        if k == "parcels":
+            rawinfo = raws["sourcespc"].info
+            i_channels =  i_all_parcels
+        elif k in ["mag", "grad"]:
+            rawinfo = raws["sensorspc"].info
+            i_channels = mne.pick_types(rawinfo, meg=k)
+        ch_names = [rawinfo.ch_names[i] for i in i_channels]
+        ch_types = rawinfo.get_channel_types(i_channels)
+        Y_info[k] = mne.create_info(
+            ch_names=ch_names,
+            sfreq=sfreq,
+            ch_types=ch_types,
+        )
+
+    return {"X": X, "Y": Y, "Y_info": Y_info}
 
 def plot_design_matrix(X, event_names):
     """Plot the given design matrix."""
@@ -202,6 +218,40 @@ def create_trf_model(event_names, sfreq, tmin=-0.5, tmax=1.0,
                 alpha=alpha, fit_intercept=True))
     return mne.decoding.ReceptiveField(tmin, tmax, sfreq,
                 feature_names=event_names, estimator=estimator)
+
+def estimate_trfs(trf_model, X, Y, Y_info):
+    """Estimate the TRFs by fitting the TRF model to the given X and Y data.
+    The TRFs are returned as a list of mne.Evoked instances, with one evoked
+    response per feature/event in the design matrix X."""
+    trf_model.fit(X, Y)
+    trfs = [ mne.EvokedArray(
+            trf_model.coef_[:, i_feat, :],
+            Y_info,
+            tmin=trf_model.tmin,
+            comment=feat_name)
+        for i_feat, feat_name in enumerate(trf_model.feature_names)
+    ]
+    return trfs
+
+def save_trfs(trfs, fpath, verbose=True):
+    """
+    Save the TRFs to a file at the given fpath.
+    The TRFs should be a list of mne.Evoked instances. The info objects of the
+    TRFs should be all the same, as required by mne.write_evokeds(), which only
+    uses the info of the first instance to write the file.
+    The file path is a fif file whose name should end with '_ave' or '-ave' with
+    extension '.fif' or '.fif.gz'.
+    """
+    mne.write_evokeds(fpath, trfs, overwrite=True)
+    if verbose:
+        print(f"TRFs saved at {fpath}")
+
+def load_trfs(fpath):
+    """
+    Load the TRFs from a .fif file at the given fpath. The TRFs are returned as
+    a list of mne.Evoked instances.
+    """
+    return mne.read_evokeds(fpath)
 
 def calculate_rms_trf(trf_model_coef):
     """
