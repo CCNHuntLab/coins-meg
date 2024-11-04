@@ -12,8 +12,9 @@ This does not use OSL batch utils/config-file setup.
 
 import os
 import os.path as op
-import osl
+import argparse
 from pprint import pprint
+import osl
 from osl import utils
 from osl import source_recon
 import numpy as np
@@ -44,16 +45,26 @@ def copy_polhemus_files(polhemus_dir, recon_dir, subject):
     np.savetxt(filenames["polhemus_lpa_file"], polhemus_lpa)
     np.savetxt(filenames["polhemus_headshape_file"], polhemus_headshape)
 
+############## ------- Parse command-line arguments ---------- ############
+
+parser = argparse.ArgumentParser(description="Run coregistration and source reconstruction for MEG data.")
+parser.add_argument(
+    '--parcellation_version', 
+    type=str, 
+    required=True, 
+    help="Specify the parcellation version to use for source reconstruction."
+)
+args = parser.parse_args()
+# Setting of which parcellation file to use
+parcellation_version = args.parcellation_version # eg 'HarvOxf-sub-Schaefer100-combined-2mm_4d_ds8'
+parcellation_fname = parcellation_version + '.nii.gz'
+
 ############## ------- Directories ---------- ############
 
 # Directories
 data_dir = coinsmeg.RAW_DIR # this is the same as BASE_DIR as raw data is stored in the base directory
 preproc_dir = coinsmeg.PREPROCESSED_DIR
 recon_dir = op.join(coinsmeg.DERIVATIVES_DIR, "recon")
-
-# Setting of which parcellation file to use
-parcellation_version = 'HarvOxf-sub-Schaefer100-combined-2mm_4d_ds8'
-parcellation_fname = parcellation_version + '.nii.gz'
 
 # Get subjects
 subs = []
@@ -69,7 +80,7 @@ for sub in subs:
     for run in range(1, 5):  # Loop from 1 to 4
         sub_run_combos.append(f"{sub}_run-{run}") # sub_run_combos is now a list of ['sub-01_run-1', 'sub-01_run-2', ...]
 
-print(sub_run_combos)
+print(sub_run_combos) # eg ['sub-04_run-3'...]
 
 ############## -------  Run coregistration and source reconstruction   ---------- ############
 
@@ -229,7 +240,7 @@ for sub_run_combo in sub_run_combos:
     raw = mne.io.read_raw_fif(fif_file) # recall that fif_file is a specific subject/run
     parc_raw = parcellation.convert2mne_raw(parcel_ts, raw)
 
-    print("Dimensions of parc_raw are (nparcels x all_tpts) = {}".format(parc_raw.get_data().shape))
+    print(f"Dimensions of parc_raw are (nparcels x all_tpts) = {parc_raw.get_data().shape}")
 
     # source space data directory
     parc_dir = op.join(coinsmeg.SRC_DIR, sub_run_combo, parcellation_version) # directory for saving the parcellated file
