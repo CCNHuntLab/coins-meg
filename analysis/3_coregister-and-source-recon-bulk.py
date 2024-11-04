@@ -50,8 +50,9 @@ def copy_polhemus_files(polhemus_dir, recon_dir, subject):
 parser = argparse.ArgumentParser(description="Run coregistration and source reconstruction for MEG data.")
 parser.add_argument(
     '--parcellation_version', 
+    default='Glasser52_binary_space-MNI152NLin6_res-1x1x1',
     type=str, 
-    required=True, 
+    required=False, 
     help="Specify the parcellation version to use for source reconstruction."
 )
 args = parser.parse_args()
@@ -106,7 +107,7 @@ for sub_run_combo in sub_run_combos:
         include_nose=True,
     )
     # check in fsleyes
-    source_recon.rhino.surfaces_display(recon_dir, sub_run_combo)
+    # source_recon.rhino.surfaces_display(recon_dir, sub_run_combo)
     
     polhemus_dir = op.join(recon_dir, sub_run_combo, "polhemus")
     # make directory if it doesn't yet exist
