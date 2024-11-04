@@ -2,10 +2,26 @@
 Utility functions for analysis scripts
 """
 
+import coinsmeg_data as coinsmeg
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os
 import os.path as op
+
+#
+# Running analyses locally, using a copy of the data stored in a local directory
+# rather on the server.
+#
+
+LOCAL_BASE_DIR = "/Users/cedric/Code_and_Repositories/ContInf_-_Code/coins-meg_data"
+
+def get_path_for_data(original_path,
+    do_locally=False, local_base_dir=LOCAL_BASE_DIR):
+    return (get_local_path_for_data(original_path, local_base_dir=local_base_dir)
+        if do_locally else original_path)
+
+def get_local_path_for_data(original_path, local_base_dir=LOCAL_BASE_DIR):
+    return original_path.replace(coinsmeg.BASE_DIR, local_base_dir)
 
 #
 # Saving outputs

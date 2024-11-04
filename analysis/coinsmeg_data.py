@@ -37,6 +37,25 @@ PREPROCESSED_DIR = op.join(DERIVATIVES_DIR, "preprocessed")
 
 # Directory containing source-space parcellated data
 SRC_DIR = op.join(DERIVATIVES_DIR, "src")
+
+#
+# Definitions of events, conditions, and other experiment-related information.
+#
+
+EVENT_ID = {
+    "blockEnd": 20,
+    "blockStart": 10,
+    "expEnd": 105,
+    "expStart": 100,
+    "keyDown": 6,
+    "keyLeft": 4,
+    "keyRelease": 7,
+    "keyRight": 3,
+    "keyUp": 5,
+    "laserHit": 1,
+    "laserMiss": 2,
+}
+
 #
 # Definitions related to the subjects in the dataset.
 #
@@ -57,6 +76,9 @@ SUBS_ALL = [sub_num2str(subnum) for subnum in SUB_NUMS_ALL]
 SUB_NUMS_W_ANAT = [4, 7] + list(range(9, 22))
 SUBS_W_ANAT = [sub_num2str(subnum) for subnum in SUB_NUMS_W_ANAT]
 
+# Number of runs in the MEG session, and list of run numbers identifying each run.
+N_RUNS = 4
+RUNS = list(range(1, N_RUNS+1))
 
 #
 # Subject-specific directories and file paths
@@ -93,4 +115,35 @@ def get_sub_behav_fpath(sub, runnum):
     run number."""
     d = get_sub_behav_dir(sub)
     fname = get_sub_behav_fname(sub, runnum)
+    return op.join(d, fname)
+
+def get_sub_preproc_dir(sub, run):
+    """Path to the directory containing the preprocessed MEG data for a given subject
+    and run."""
+    subdir = f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss"
+    return op.join(PREPROCESSED_DIR, subdir)
+
+def get_sub_preproc_raw_fname(sub, run):
+    """Name of the .fif file containing the preprocessed MEG data for a given
+    subject and run, which can be loaded as a MNE Raw object."""
+    return f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss_preproc_raw.fif"
+
+def get_sub_preproc_raw_fpath(sub, run):
+    """Path to the .fif file containing the preprocessed MEG data for a given
+    subject and run, which can be loaded as a MNE Raw object."""
+    d = get_sub_preproc_dir(sub, run)
+    fname = get_sub_preproc_raw_fname(sub, run)
+    return op.join(d, fname)
+
+def get_sub_src_dir(sub, run):
+    """Path to the directory containing the source-reconstructed MEG data
+    for a given subject and run."""
+    return op.join(SRC_DIR, f"{sub_num2str(sub)}_run-{run}")
+
+def get_sub_src_parc_fpath(sub, run):
+    """Path to the .fif file containing the source-reconstructed MEG data
+    for a given subject and run, parcellated by brain region, and
+    loadable as a MNE Raw object."""
+    d = get_sub_src_dir(sub, run)
+    fname = "parc_raw.fif"
     return op.join(d, fname)
