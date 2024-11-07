@@ -194,11 +194,22 @@ def get_XY_singlerun(sub, run, event_names,
             i_channels = mne.pick_types(rawinfo, meg=k)
         ch_names = [rawinfo.ch_names[i] for i in i_channels]
         ch_types = rawinfo.get_channel_types(i_channels)
-        Y_info[k] = mne.create_info(
+        newinfo = mne.create_info(
             ch_names=ch_names,
             sfreq=sfreq,
             ch_types=ch_types,
         )
+        # Set channel information, including channel locations
+        for i_newinfo, i_rawinfo in enumerate(i_channels):
+            newinfo["chs"][i_newinfo].update(rawinfo["chs"][i_rawinfo])
+        # Set other info entries that should be manually changed by the user (as per MNE documentation)
+        for infokey in ["bads", "device_info", "dev_head_t", "experimenter", "helium_info",
+            "line_freq", "subject_info"]:
+            if infokey in rawinfo.keys():
+                newinfo[infokey] = rawinfo[infokey]
+        if k in ["mag", "grad"]:
+            newinfo.set_montage(rawinfo.get_montage())
+        Y_info[k] = newinfo
 
     return {"X": X, "Y": Y, "Y_info": Y_info}
 
