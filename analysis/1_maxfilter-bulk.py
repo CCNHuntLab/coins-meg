@@ -17,6 +17,8 @@ import numpy as np
 from glob import glob
 from scipy import linalg
 from osl.maxfilter import run_maxfilter_batch
+import coinsmeg_data as coinsmeg
+import sys
 
 # Define functions ####
 # distance between two points in 3D-coordinate system
@@ -28,22 +30,23 @@ def dist(point_1, point_2, key):
 
 excludes = [] # participants to exclude; currently none
 
-raw_path = "/ohba/pi/lhunt/datasets/coins-meg_meg-analysis/data"
+raw_path = coinsmeg.BASE_DIR
 #raw_path = "/Users/amyli/Desktop/LH-lab/coins-meg_meg-analysis/data"
 raw_folder = [name for name in glob(raw_path + "/*/ses-2-meg/meg/")]
 raw_folder = [folder for folder in raw_folder if folder.split('/')[-4] not in excludes] # get rid of folders of subs to exclude
 raw_folder = sorted(raw_folder)
 
 # make list of subjects
-subjs = {file.split("/")[-1] for file in glob(raw_path + "/*")} # for raw_path: split at / and take last entry ('s01')
+subjs = {file.split("/")[-1] for file in glob(raw_path + "/sub-*")} # ensure that only folders beginning with "sub-" are included in subjs
 subjs = [sub for sub in subjs if sub not in excludes] # drop subjects who did not complete task
 subjs = dict.fromkeys(subjs) #create dictionary with empty value
 subjs = collections.OrderedDict(sorted(subjs.items())) #sort dictionary by key
-print(subjs)
 
-# subjs = collections.OrderedDict([list(subjs.items())[11]]) # only do subject 12 now bc other folders are empty
-# need to convert back to OrderedDict, else "subjs.keys()" in the below for loop will not work
-# raw_folder = [raw_folder[11]] # only do subject 12 now
+# example in comments: only do subject 19
+#subjs = collections.OrderedDict([list(subjs.items())[18]]) 
+## need to convert back to OrderedDict, else "subjs.keys()" in the below for loop will not work
+#raw_folder = [raw_folder[18]] # only do subject 19 now
+print("subjs = ",subjs)
 
 # %% Identify most central scan for each participant ####
 
@@ -105,8 +108,9 @@ for iSub, central_scan in enumerate(most_central.items()):
     # so central_scan[1] is the filename of the most central scan
 
     # Directory to save the maxfiltered data to
-    output_dir = "/ohba/pi/lhunt/datasets/coins-meg_meg-analysis/data_maxfiltered/" + central_scan[0] + '/'
-
+    output_dir = f"{coinsmeg.DERIVATIVES_DIR}/maxfiltered/" + central_scan[0] + '/'
+    print('output_dir = ',output_dir)
+ 
     # Run MaxFiltering
     run_maxfilter_batch(
         input_files,
