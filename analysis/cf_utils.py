@@ -5,6 +5,7 @@ Utility functions for analysis scripts
 import coinsmeg_data as coinsmeg
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import os.path as op
 
@@ -79,3 +80,7 @@ def setup_mpl_style(fontsize=8):
     mpl.rcParams['lines.linewidth'] = 1.0
     mpl.rcParams["legend.frameon"] = False
     mpl.rcParams['figure.constrained_layout.use'] = True
+
+def get_symmetric_vlim_for_data(data):
+    vabsmax = np.abs(data).max()
+    return (-vabsmax, vabsmax)

@@ -264,6 +264,15 @@ def load_trfs(fpath):
     """
     return mne.read_evokeds(fpath)
 
+def get_trfs_fname(sub, events, datatype,
+    downsamp=10,  downsamp_method="decimate", alpha=0, no_reject=False):
+    downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
+    paramkeys = ["sub", "events", "datatype", downsamp_name, "alpha", "no-reject"]
+    paramvals = [sub, events, datatype, downsamp, alpha, no_reject]
+    fname = utils.name_with_params("trfs", paramkeys, paramvals)
+    fname += "_ave" # MNE recommends the file name to end with "ave" for evoked instances
+    return fname
+
 def calculate_rms_trf(trf_model_coef):
     """
     Calculate the RMS across sensors of the beta coefficients,
