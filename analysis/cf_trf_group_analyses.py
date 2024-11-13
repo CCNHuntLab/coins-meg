@@ -386,7 +386,7 @@ def plot_time_courses(ax_signals, evoked, clusters, clu_indices, cluster_pv,
             f"p={cluster_pv[clu_idx]:.3f}", fontsize=6,
             ha="center", va=va,
         )
-    ax_signals.plot(evoked.times, clu_timecourse, color="black", lw=2)
+        ax_signals.plot(evoked.times, clu_timecourse, color="black", lw=2)
 
 if __name__ == '__main__':
     main()
