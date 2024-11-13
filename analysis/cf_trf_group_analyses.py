@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import mne
 import os.path as op
+import scipy.sparse
 import scipy.stats
 
 def main():
@@ -40,7 +41,7 @@ def main():
     #   baseline period.
     # - z-signal: The z-scored signal value. The mean and std used for the
     #   z-scoring are the mean and std of the signal in the baseline period.
-    signaltypes = ["rel-signal", "z-signal"]
+    signaltypes = ["rel-signal", "z-signal", "signal"]
     
     # Baseline period to compute relative/z-scored signal value
     baseline_window = (-0.2, 0.)
@@ -150,6 +151,7 @@ def main():
             suptitle = f"Group-level TRF for {effect} (N={len(subjects)}, {datatype}, {signaltype})"
             units = "t value"
             scalings = 1
+            cmap = "RdBu_r"
             vlim = cf_utils.get_symmetric_vlim_for_data(evoked.data)
             cnorm = mpl.colors.Normalize(vmin=vlim[0], vmax=vlim[1],
                 clip=False)
@@ -173,7 +175,7 @@ def main():
                 topomap_args=dict(units=units,
                     scalings=scalings,
                     cnorm=cnorm,
-                    cmap="RdBu_r",
+                    cmap=cmap,
                     ))
             fname = cf_utils.name_with_params(figname, paramkeys, paramvals)
             fpath = cf_utils.path_with_components(outdir, fname, "png")
@@ -187,7 +189,7 @@ def main():
                 units=units,
                 scalings=scalings,
                 cnorm=cnorm,
-                cmap="RdBu_r",
+                cmap=cmap,
                 nrows="auto", ncols=5,
                 show=False)
             fig.suptitle(suptitle)
@@ -214,75 +216,177 @@ def main():
             # Loop over the clusters considered statistically significant
             sig_clust_inds = np.where(cluster_pv < p_sig_cluster)[0]
             for i_clu, clu_idx in enumerate(sig_clust_inds):
-                # unpack cluster information (channel and time points)
-                time_inds, space_inds = np.squeeze(clusters[clu_idx])
-                ch_inds = np.unique(space_inds)
+                # Unpack cluster information (channel and time points)
+                time_inds, ch_inds = np.squeeze(clusters[clu_idx])
+                ch_inds = np.unique(ch_inds)
                 time_inds = np.unique(time_inds)
                 sig_times = evoked.times[time_inds]
-                # compute average t value of the cluster across time
+                # Compute average t value of the cluster across time
                 # and construct a corresponding evoked response object
-                # to show the topography
+                # to show its topography
                 t_mean = t_vals[time_inds, ...].mean(axis=0)
                 evoked_mean = mne.EvokedArray(t_mean[:, np.newaxis], evoked.info, tmin=0)
-                # create mask to show which channels are significant
+                # Create mask to show which channels are significant
                 mask = np.zeros((t_mean.shape[0], 1), dtype=bool)
                 mask[ch_inds, :] = True
-                # initialize figure
+                # Initialize figure and setup axes for the topography
+                # and time courses
                 fig, ax_topo = plt.subplots(1, 1, figsize=(10, 3),
                     layout="constrained")
                 fig.suptitle(suptitle)
-                mne.viz.plot_evoked_topomap(evoked_mean,
-                    times=0,
-                    mask=mask,
-                    axes=ax_topo,
-                    show=False,
-                    colorbar=False,
-                    mask_params=dict(markersize=10),
-                    units=units,
-                    scalings=scalings,
-                    cnorm=cnorm,
-                    cmap="RdBu_r",
-                )
-                image = ax_topo.images[0]
-                # remove the title that would otherwise say "0.000 s"
-                ax_topo.set_title("")
-                # divider object used to create additional axes on the figure
                 divider = make_axes_locatable(ax_topo)
-                # add axes for colorbar
                 ax_colorbar = divider.append_axes("right", size="5%", pad=0.05)
-                plt.colorbar(image, cax=ax_colorbar)
-                ax_topo.set_xlabel(
-                    "Averaged t-map ({:0.3f} - {:0.3f} s)".format(*sig_times[[0, -1]])
-                )
-                # add new axis for time courses and plot time courses
                 ax_signals = divider.append_axes("right", size="300%", pad=1.2)
+                # Plot topography
+                plot_cluster_topomap(ax_topo, ax_colorbar, evoked_mean,
+                    sig_times, mask, units=units, scalings=scalings, cnorm=cnorm,
+                    cmap=cmap)
+                # Plot time courses
                 title = f"Cluster #{i_clu + 1}"
-                fig = mne.viz.plot_evoked(evoked,
-                    axes=ax_signals,
-                    units=units,
-                    scalings=scalings,
-                    picks=ch_inds,
-                    titles={"mag": title, "grad": title},
-                    spatial_colors=True,
-                    highlight=(sig_times[0], sig_times[-1]),
-                    show=False,
-                    ylim={"mag": ylim, "grad": ylim},
-                )
-                # add annotations showing the cluster time window and p value
-                ymin, ymax = ax_signals.get_ylim()
-                yline = ymin + (ymax - ymin) * 0.95
-                ytext = ymin + (ymax - ymin) * 0.96
-                ax_signals.plot([sig_times[0], sig_times[-1]], [yline, yline], '-', color="black", lw=1.)
-                ax_signals.text(
-                    (sig_times[0]+sig_times[-1])/2,
-                    ytext,
-                    f"p={cluster_pv[clu_idx]:.3f}", fontsize=6,
-                    ha="center", va="bottom",
-                )
+                plot_time_courses(ax_signals, evoked, clusters, [clu_idx], cluster_pv,
+                    picks=ch_inds, units=units,
+                    scalings=scalings, ylim=ylim, highlight_times=sig_times,
+                    title=title)
+                # Save the figure
                 figname = "trf-cluster"
                 fname = cf_utils.name_with_params(figname, paramkeys + ["clust"], paramvals + [i_clu+1])
                 fpath = cf_utils.path_with_components(outdir, fname, "png")
                 cf_utils.save_figure(fig, fpath)
+
+            #
+            # Plot together significant clusters that temporally overlap in one figure,
+            # as a group of clusters.
+            #
+            # Find groups of clusters that are overlapping in time finding the
+            # connected components of a graph whose nodes are the clusters and
+            # edges are drawn between clusters that overlap
+            sig_clust_time_inds = [np.unique(np.squeeze(clusters[clu_idx])[0])
+                for clu_idx in sig_clust_inds]
+            n_sig_clusters = len(sig_clust_inds)
+            overlap_matrix = np.zeros((n_sig_clusters, n_sig_clusters))
+            for i_clust_1, i_clust_2 in itertools.combinations(range(n_sig_clusters), 2):
+                overlap = np.intersect1d(
+                    sig_clust_time_inds[i_clust_1], sig_clust_time_inds[i_clust_2])
+                overlap_matrix[i_clust_1, i_clust_2] = overlap.size > 0
+                overlap_matrix[i_clust_2, i_clust_1] = overlap_matrix[i_clust_1, i_clust_2]
+            n_groups, sig_clust_groups = scipy.sparse.csgraph.connected_components(overlap_matrix,
+                directed=False, )
+            # Plot each cluster group
+            for i_group in range(n_groups):
+                group_clust_inds = np.where(sig_clust_groups == i_group)[0]
+                if group_clust_inds.size < 2:
+                    # Skip this group if there's only one cluster in it, as the 
+                    # individual clusters have already been plotted above
+                    continue
+                # Find the time range and the channels of the group, which is
+                # the union of the time ranges and channels of the clusters in
+                # the group
+                time_inds = np.array([], dtype=int)
+                ch_inds = np.array([], dtype=int)
+                for clu_idx in sig_clust_inds[group_clust_inds]:
+                    clu_time_inds, clu_ch_inds = np.squeeze(clusters[clu_idx])
+                    clu_ch_inds = np.unique(clu_ch_inds)
+                    clu_time_inds = np.unique(clu_time_inds)
+                    time_inds = np.union1d(time_inds, clu_time_inds)
+                    ch_inds = np.union1d(ch_inds, clu_ch_inds)
+                group_times = evoked.times[time_inds]
+                # Compute average t value of the cluster group across time
+                # and construct a corresponding evoked response object
+                # to show its topography
+                t_mean = t_vals[time_inds, ...].mean(axis=0)
+                evoked_mean = mne.EvokedArray(t_mean[:, np.newaxis], evoked.info, tmin=0)
+                # Create mask to show which channels are in the cluster group
+                mask = np.zeros((t_mean.shape[0], 1), dtype=bool)
+                mask[ch_inds, :] = True
+                # Initialize figure and setup axes for the topography
+                # and time courses
+                fig, ax_topo = plt.subplots(1, 1, figsize=(10, 3),
+                    layout="constrained")
+                fig.suptitle(suptitle)
+                divider = make_axes_locatable(ax_topo)
+                ax_colorbar = divider.append_axes("right", size="5%", pad=0.05)
+                ax_signals = divider.append_axes("right", size="300%", pad=1.2)
+                # plot topography
+                plot_cluster_topomap(ax_topo, ax_colorbar, evoked_mean,
+                    group_times, mask, units=units, scalings=scalings, cnorm=cnorm,
+                    cmap=cmap)
+                # Plot time courses
+                title = f"Group of clusters " + "-".join([f"{i_clu + 1}"
+                    for i_clu in group_clust_inds])
+                plot_time_courses(ax_signals, evoked, clusters,
+                    sig_clust_inds[group_clust_inds], cluster_pv,
+                    picks=ch_inds, units=units,
+                    scalings=scalings, ylim=ylim, highlight_times=group_times,
+                    title=title)
+                # Save the figure
+                figname = "trf-cluster"
+                fname = cf_utils.name_with_params(figname, paramkeys + ["clust-group"], paramvals + [i_group+1])
+                fpath = cf_utils.path_with_components(outdir, fname, "png")
+                cf_utils.save_figure(fig, fpath)
+
+def plot_cluster_topomap(ax_topo, ax_colorbar,
+    evoked_mean, times, mask, units, scalings, cnorm,
+    cmap, show_colorbar=True):
+    """
+    Plot the topomap for a given cluster or cluster group.
+    """
+    mne.viz.plot_evoked_topomap(
+        evoked_mean,
+        times=0,
+        mask=mask,
+        axes=ax_topo,
+        show=False,
+        colorbar=False,
+        mask_params=dict(markersize=10),
+        units=units,
+        scalings=scalings,
+        cnorm=cnorm,
+        cmap=cmap,
+    )
+    # remove the title that would otherwise say "0.000 s"
+    ax_topo.set_title("")
+    ax_topo.set_xlabel(f"Averaged t-map ({times[0]:0.3f} - {times[-1]:0.3f} s)")
+    # plot colorbar
+    image = ax_topo.images[0]
+    if show_colorbar:
+        plt.colorbar(image, cax=ax_colorbar)
+    
+def plot_time_courses(ax_signals, evoked, clusters, clu_indices, cluster_pv,
+    picks, units, scalings, ylim, highlight_times, title):
+    """
+    Plot the time courses for a given cluster or cluster group.
+    """
+    fig = mne.viz.plot_evoked(
+        evoked,
+        axes=ax_signals,
+        units=units,
+        scalings=scalings,
+        picks=picks,
+        titles={"mag": title, "grad": title},
+        spatial_colors=True,
+        highlight=(highlight_times[0], highlight_times[-1]),
+        show=False,
+        ylim={"mag": ylim, "grad": ylim},
+    )
+    ymin, ymax = ax_signals.get_ylim()
+    for clu_idx in clu_indices:
+        clu_time_inds, clu_ch_inds = np.squeeze(clusters[clu_idx])
+        clu_time_inds = np.unique(clu_time_inds)
+        clu_ch_inds = np.unique(clu_ch_inds)
+        clu_sig_times = evoked.times[clu_time_inds]
+        clu_timecourse = evoked.data[clu_ch_inds, :].mean(axis=0)
+        is_pos = clu_timecourse[clu_time_inds].mean() > 0
+        yline = ymin + (ymax - ymin) * (0.95 if is_pos else 0.05)
+        ytext = ymin + (ymax - ymin) * (0.96 if is_pos else 0.04)
+        va = "bottom" if is_pos else "top"
+        ax_signals.plot([clu_sig_times[0], clu_sig_times[-1]], [yline, yline], '-', color="black", lw=1.)
+        ax_signals.text(
+            (clu_sig_times[0] + clu_sig_times[-1]) / 2,
+            ytext,
+            f"p={cluster_pv[clu_idx]:.3f}", fontsize=6,
+            ha="center", va=va,
+        )
+    ax_signals.plot(evoked.times, clu_timecourse, color="black", lw=2)
 
 if __name__ == '__main__':
     main()
