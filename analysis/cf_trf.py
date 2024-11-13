@@ -194,11 +194,22 @@ def get_XY_singlerun(sub, run, event_names,
             i_channels = mne.pick_types(rawinfo, meg=k)
         ch_names = [rawinfo.ch_names[i] for i in i_channels]
         ch_types = rawinfo.get_channel_types(i_channels)
-        Y_info[k] = mne.create_info(
+        newinfo = mne.create_info(
             ch_names=ch_names,
             sfreq=sfreq,
             ch_types=ch_types,
         )
+        # Set channel information, including channel locations
+        for i_newinfo, i_rawinfo in enumerate(i_channels):
+            newinfo["chs"][i_newinfo].update(rawinfo["chs"][i_rawinfo])
+        # Set other info entries that should be manually changed by the user (as per MNE documentation)
+        for infokey in ["bads", "device_info", "dev_head_t", "experimenter", "helium_info",
+            "line_freq", "subject_info"]:
+            if infokey in rawinfo.keys():
+                newinfo[infokey] = rawinfo[infokey]
+        if k in ["mag", "grad"]:
+            newinfo.set_montage(rawinfo.get_montage())
+        Y_info[k] = newinfo
 
     return {"X": X, "Y": Y, "Y_info": Y_info}
 
@@ -252,6 +263,15 @@ def load_trfs(fpath):
     a list of mne.Evoked instances.
     """
     return mne.read_evokeds(fpath)
+
+def get_trfs_fname(sub, events, datatype,
+    downsamp=10,  downsamp_method="decimate", alpha=0, no_reject=False):
+    downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
+    paramkeys = ["sub", "events", "datatype", downsamp_name, "alpha", "no-reject"]
+    paramvals = [sub, events, datatype, downsamp, alpha, no_reject]
+    fname = utils.name_with_params("trfs", paramkeys, paramvals)
+    fname += "_ave" # MNE recommends the file name to end with "ave" for evoked instances
+    return fname
 
 def calculate_rms_trf(trf_model_coef):
     """

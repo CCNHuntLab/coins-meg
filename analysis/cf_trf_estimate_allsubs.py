@@ -92,10 +92,8 @@ def main(args):
         # File path where the TRFs are saved
         trf_fpath = {}
         for k in datatypes:
-            paramkeys = ["sub", "events", "datatype", downsamp_name, "alpha", "no-reject"]
-            paramvals = [sub, events, k, downsamp, alpha, no_reject]
-            trf_fname = cf_utils.name_with_params("trfs", paramkeys, paramvals)
-            trf_fname += "_ave" # MNE recommends the file name to end with "ave" for evoked instances
+            trf_fname = cf_trf.get_trfs_fname(sub, events, k, downsamp=downsamp,
+                downsamp_method=downsamp_method, alpha=alpha, no_reject=no_reject)
             trf_fpath[k] = cf_utils.path_with_components(outdir, trf_fname, "fif")
         
         #
