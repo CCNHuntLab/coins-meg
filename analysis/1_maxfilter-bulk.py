@@ -18,7 +18,6 @@ from glob import glob
 from scipy import linalg
 from osl.maxfilter import run_maxfilter_batch
 import coinsmeg_data as coinsmeg
-import sys
 
 # Define functions ####
 # distance between two points in 3D-coordinate system
