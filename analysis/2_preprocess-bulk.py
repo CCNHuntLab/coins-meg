@@ -34,10 +34,10 @@ preproc:
   - filter:             {l_freq: 0.25, h_freq: 40, method: iir, iir_params: {order: 5, ftype: butter}}
   - notch_filter:       {freqs: 50 100}
   - resample: {sfreq: 250}
-  - bad_segments: {segment_len: 500, picks: mag}
-  - bad_segments: {segment_len: 500, picks: grad}
-  - bad_segments: {segment_len: 500, picks: mag, mode: diff}
-  - bad_segments: {segment_len: 500, picks: grad, mode: diff}
+  - bad_segments: {segment_len: 250, picks: mag}
+  - bad_segments: {segment_len: 250, picks: grad}
+  - bad_segments: {segment_len: 250, picks: mag, mode: diff}
+  - bad_segments: {segment_len: 250, picks: grad, mode: diff}
   - bad_channels: {picks: mag}
   - bad_channels: {picks: grad}
   - ica_raw: {picks: meg, n_components: 64}
