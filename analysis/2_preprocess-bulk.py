@@ -10,8 +10,6 @@ import ipympl
 from osl import preprocessing, utils
 import coinsmeg_data as coinsmeg
 from dask.distributed import Client, as_completed # for parallel processing
-import sys
-
 ### The preprocessing config ####
 
 config_text= """
@@ -69,8 +67,6 @@ print(datafiles)
 
 # load all runs of all subjects
 fnames = datafiles.get()
-#names = datafiles.get(subj="17", run="1") # load a test subject/run
-#pprint(fnames)
 print(fnames)
 
 # Create a text file with the path to each dataset on every line.
