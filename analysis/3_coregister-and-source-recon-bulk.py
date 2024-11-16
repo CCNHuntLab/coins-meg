@@ -83,6 +83,7 @@ for sub in subs:
 
 print(sub_run_combos) # eg ['sub-04_run-3'...]
 
+sub_run_combos = ['sub-04_run-3']
 ############## -------  Run coregistration and source reconstruction   ---------- ############
 
 for sub_run_combo in sub_run_combos:
@@ -204,8 +205,17 @@ for sub_run_combo in sub_run_combos:
 
     print("Applying beamformer spatial filters")
 
+    # Save Beamformer object
+    filters.save(op.join(coinsmeg.SRC_DIR, sub_run_combo, "filters.h5"), overwrite=True)
+
     # stc is source space time series (in head/polhemus space).
     stc = beamforming.apply_lcmv(data, filters)
+
+    # save the SourceEstimate object
+    filters.save(fname = op.join(coinsmeg.SRC_DIR, sub_run_combo, "stc"), overwrite=True) 
+    # fname is the stem; file names used for surface source spaces are obtained by adding "-lh.stc" and "-rh.stc" (or "-lh.w" and "-rh.w") to the stem provided
+
+    print("Beamformer filters and source-space time series have been saved to the src dir.")
 
     # Convert from head/polhemus space to standard brain grid in MNI space
     recon_timeseries_mni, reference_brain_fname, recon_coords_mni, _ = \
