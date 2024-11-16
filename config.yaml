@@ -31,18 +31,18 @@ preproc:
     sfreq: 250
 - bad_segments:
     picks: mag
-    segment_len: 500
+    segment_len: 250
 - bad_segments:
     picks: grad
-    segment_len: 500
+    segment_len: 250
 - bad_segments:
     mode: diff
     picks: mag
-    segment_len: 500
+    segment_len: 250
 - bad_segments:
     mode: diff
     picks: grad
-    segment_len: 500
+    segment_len: 250
 - bad_channels:
     picks: mag
 - bad_channels:
