@@ -117,10 +117,27 @@ def get_sub_behav_fpath(sub, runnum):
     fname = get_sub_behav_fname(sub, runnum)
     return op.join(d, fname)
 
+def get_sub(sub_or_subnum):
+    if (isinstance(sub_or_subnum, str)
+        and sub_or_subnum.startswith('sub-')):
+            return sub_or_subnum
+    elif isinstance(sub_or_subnum, int):
+        return sub_num2str(sub_or_subnum)
+    else:
+        return f"sub-{sub_or_subnum}"
+
+def get_run(run_or_runnum):
+    if (isinstance(run_or_runnum, str)
+        and run_or_runnum.startswith('run-')):
+            return run_or_runnum
+    else:
+        return f"run-{run_or_runnum}"
+
 def get_sub_preproc_dir(sub, run):
     """Path to the directory containing the preprocessed MEG data for a given subject
     and run."""
-    subdir = f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss"
+
+    subdir = f"{get_sub(sub)}_ses-2-meg_task-coinsmeg_{get_run(run)}_meg_transsss"
     return op.join(PREPROCESSED_DIR, subdir)
 
 def get_sub_preproc_raw_fname(sub, run, suffix="preproc-raw"):
@@ -132,7 +149,7 @@ def get_sub_preproc_raw_fname(sub, run, suffix="preproc-raw"):
     'ftype' parameter in osl.preprocessing.run_proc_chain().
     At the time this docstring was written, the default value for ftype is "preproc-raw".
     """
-    return f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss_{suffix}.fif"
+    return f"{get_sub(sub)}_ses-2-meg_task-coinsmeg_{get_run(run)}_meg_transsss_{suffix}.fif"
 
 def get_sub_preproc_raw_fpath(sub, run):
     """Path to the .fif file containing the preprocessed MEG data for a given
@@ -144,7 +161,7 @@ def get_sub_preproc_raw_fpath(sub, run):
 def get_sub_src_dir(sub, run):
     """Path to the directory containing the source-reconstructed MEG data
     for a given subject and run."""
-    return op.join(SRC_DIR, f"{sub_num2str(sub)}_run-{run}")
+    return op.join(SRC_DIR, f"{get_sub(sub)}_{get_run(run)}")
 
 def get_sub_src_parc_fpath(sub, run):
     """Path to the .fif file containing the source-reconstructed MEG data
