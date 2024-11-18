@@ -58,7 +58,7 @@ parser.add_argument(
 args = parser.parse_args()
 # Setting of which parcellation file to use
 parcellation_version = args.parcellation_version # eg 'HarvOxf-sub-Schaefer100-combined-2mm_4d_ds8'
-parcellation_fname = parcellation_version + '.nii.gz'
+parcellation_fname = f"{coinsmeg.DERIVATIVES_DIR}/recon/{parcellation_version}.nii.gz"
 
 ############## ------- Directories ---------- ############
 
