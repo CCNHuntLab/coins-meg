@@ -123,10 +123,16 @@ def get_sub_preproc_dir(sub, run):
     subdir = f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss"
     return op.join(PREPROCESSED_DIR, subdir)
 
-def get_sub_preproc_raw_fname(sub, run):
-    """Name of the .fif file containing the preprocessed MEG data for a given
-    subject and run, which can be loaded as a MNE Raw object."""
-    return f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss_preproc_raw.fif"
+def get_sub_preproc_raw_fname(sub, run, suffix="preproc-raw"):
+    """
+    Name of the .fif file containing the preprocessed MEG data for a given
+    subject and run, which can be loaded as a MNE Raw object.
+    
+    The 'suffix' parameter should reflect the value that was used for the 
+    'ftype' parameter in osl.preprocessing.run_proc_chain().
+    At the time this docstring was written, the default value for ftype is "preproc-raw".
+    """
+    return f"{sub_num2str(sub)}_ses-2-meg_task-coinsmeg_run-{run}_meg_transsss_{suffix}.fif"
 
 def get_sub_preproc_raw_fpath(sub, run):
     """Path to the .fif file containing the preprocessed MEG data for a given
