@@ -94,7 +94,7 @@ for sub_run_combo in sub_run_combos:
     # set paths for where to look for necessary files
     anat_dir = coinsmeg.get_sub_anat_dir(subject_id)
     smri_file = f"{anat_dir}/{subject_id}_T1w.nii"
-    fif_file = coinsmeg.get_sub_preproc_raw_fname(subject_id, run_id)
+    fif_file = coinsmeg.get_sub_preproc_raw_fpath(subject_id, run_id)
     
     if not os.path.exists(smri_file):
         print(f"WARNING: smri_file does not exist for {sub_run_combo}!")
