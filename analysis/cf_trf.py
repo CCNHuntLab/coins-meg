@@ -127,7 +127,7 @@ def get_XY_singlerun(sub, run, event_names,
     if "sensor" in spaces:
         paths["sensorspc"] = coinsmeg.get_sub_preproc_raw_fpath(sub, run)
     if "source" in spaces:
-        paths["sourcespc"] = coinsmeg.get_sub_src_parc_fpath(sub, run)
+        paths["sourcespc"] = coinsmeg.get_sub_parc_fpath(sub, run)
     if do_locally:
         for k, fpath in paths.items():
             paths[k] = utils.get_local_path_for_data(fpath)
