@@ -172,7 +172,7 @@ for sub_run_combo in sub_run_combos:
     )
 
     # now view result
-    source_recon.rhino.coreg_display(subjects_dir = "/ohba/pi/lhunt/datasets/coins-meg_data/derivatives/recon", 
+    source_recon.rhino.coreg_display(subjects_dir = recon_dir, 
                                     subject = sub_run_combo,
                                     filename = f"{recon_dir}/{sub_run_combo}/rhino/coreg/coreg_display_plot.html") # saves an interactive html plot at this location
 
@@ -197,8 +197,6 @@ for sub_run_combo in sub_run_combos:
 
     # load forward solution
     fwd_fname = op.join(recon_dir, sub_run_combo, "rhino", "model-fwd.fif") 
-    # tutorial said source_recon.rhino.get_coreg_filenames(recon_dir, subjects[0])["forward_model_file"]
-    # but this did not return a match for "forward_model_file"
     print(fwd_fname)
 
     fwd = read_forward_solution(fwd_fname)
