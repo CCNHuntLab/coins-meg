@@ -38,6 +38,9 @@ PREPROCESSED_DIR = op.join(DERIVATIVES_DIR, "preprocessed")
 # Directory containing source-space parcellated data
 SRC_DIR = op.join(DERIVATIVES_DIR, "src")
 
+# Name of the default parcellation
+PARC_NAME = "Glasser52_binary_space-MNI152NLin6_res-1x1x1"
+
 #
 # Definitions of events, conditions, and other experiment-related information.
 #
@@ -163,10 +166,16 @@ def get_sub_src_dir(sub, run):
     for a given subject and run."""
     return op.join(SRC_DIR, f"{get_sub(sub)}_{get_run(run)}")
 
-def get_sub_src_parc_fpath(sub, run):
+def get_sub_parc_dir(sub, run, parc_name=PARC_NAME):
+    """Path to the directory containing the source-reconstructed MEG data
+    for a given subject and run, parcellated by brain region of the given
+    parcellation."""
+    return op.join(get_sub_src_dir(sub, run), parc_name)
+
+def get_sub_parc_fpath(sub, run, parc_name=PARC_NAME):
     """Path to the .fif file containing the source-reconstructed MEG data
-    for a given subject and run, parcellated by brain region, and
-    loadable as a MNE Raw object."""
-    d = get_sub_src_dir(sub, run)
+    for a given subject and run, parcellated by brain region of the given
+    parcellation, and loadable as a MNE Raw object."""
+    d = get_sub_parc_dir(sub, run, parc_name=parc_name)
     fname = "parc_raw.fif"
     return op.join(d, fname)

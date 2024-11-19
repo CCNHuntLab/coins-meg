@@ -77,7 +77,7 @@ def main(args):
         has_all_sensorspc_data = all([op.exists(cf_utils.get_path_for_data(
             coinsmeg.get_sub_preproc_raw_fpath(sub, run), do_locally)) for run in coinsmeg.RUNS])
         has_all_sourcespc_data = all([op.exists(cf_utils.get_path_for_data(
-            coinsmeg.get_sub_src_parc_fpath(sub, run), do_locally)) for run in coinsmeg.RUNS])
+            coinsmeg.get_sub_parc_fpath(sub, run), do_locally)) for run in coinsmeg.RUNS])
         if has_all_sensorspc_data:
             spaces += ["sensor"]
             datatypes += ["mag", "grad"]

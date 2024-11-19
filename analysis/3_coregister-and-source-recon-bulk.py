@@ -50,7 +50,7 @@ def copy_polhemus_files(polhemus_dir, recon_dir, subject):
 parser = argparse.ArgumentParser(description="Run coregistration and source reconstruction for MEG data.")
 parser.add_argument(
     '--parcellation_version', 
-    default='Glasser52_binary_space-MNI152NLin6_res-1x1x1',
+    default=coinsmeg.PARC_NAME,
     type=str, 
     required=False, 
     help="Specify the parcellation version to use for source reconstruction."
@@ -244,8 +244,9 @@ for sub_run_combo in sub_run_combos:
     print(f"Dimensions of parc_raw are (nparcels x all_tpts) = {parc_raw.get_data().shape}")
 
     # source space data directory
-    parc_dir = op.join(coinsmeg.SRC_DIR, sub_run_combo, parcellation_version) # directory for saving the parcellated file
+    parc_dir = coinsmeg.get_sub_parc_dir(subject_id, run_id, parc_name=parcellation_version)
     os.makedirs(parc_dir, exist_ok=True)
 
     # save parc_raw into the src_dir
-    parc_raw.save(op.join(parc_dir, "parc_raw.fif"), overwrite=True)
+    parc_file = coinsmeg.get_sub_parc_fpath(subject_id, run_id, parc_name=parcellation_version)
+    parc_raw.save(parc_file, overwrite=True)
