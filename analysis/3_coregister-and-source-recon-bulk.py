@@ -29,6 +29,8 @@ from mne import read_forward_solution
 from osl.source_recon.rhino.polhemus import extract_polhemus_from_info
 from osl.source_recon import rhino, beamforming, parcellation # for calculating beamformer weights
 
+import re
+
 # functions
 def copy_polhemus_files(polhemus_dir, recon_dir, subject):
     polhemus_headshape = np.loadtxt(op.join(polhemus_dir, 'polhemus_headshape.txt'))
@@ -67,21 +69,53 @@ data_dir = coinsmeg.RAW_DIR # this is the same as BASE_DIR as raw data is stored
 preproc_dir = coinsmeg.PREPROCESSED_DIR
 recon_dir = op.join(coinsmeg.DERIVATIVES_DIR, "recon")
 
-# Get subjects
-subs = []
+############## ------- Get subjects and runs  ---------- ############
 
-data_sub_folders = sorted(filter(lambda path: "sub-" in path, glob(data_dir + '/*'))) # returns a list of paths e.g., '/ohba/pi/lhunt/datasets/coins-meg_data/sub-22'
+# Do a reverse search to see which subs/runs exist in the preprocessed data directory
+# Do dynamic pattern generation based on get_sub_preproc_raw_fname
 
-for subject in data_sub_folders:
-    subs.append(pathlib.Path(subject).stem) # subs is now a list of ['sub-01', 'sub-02', ...]
+def generate_pattern(suffix="preproc-raw"):
+    # Example placeholders for 'sub' and 'run'
+    sub_placeholder = "sub-\\d+"
+    run_placeholder = "run-\\d+"
 
-# Create a list with '_run-X' appended for each subject
-sub_run_combos = []
-for sub in subs:
-    for run in range(1, 5):  # Loop from 1 to 4
-        sub_run_combos.append(f"{sub}_run-{run}") # sub_run_combos is now a list of ['sub-01_run-1', 'sub-01_run-2', ...]
+    # Get the template filename using placeholders
+    template_fname = coinsmeg.get_sub_preproc_raw_fname(sub_placeholder, run_placeholder, suffix=suffix)
 
-print(sub_run_combos) # eg ['sub-04_run-3'...]
+    # Escape the generated template filename
+    template_pattern = re.escape(template_fname)
+
+    # Replace placeholders with regex groups
+    template_pattern = template_pattern.replace(re.escape(sub_placeholder), r"(?P<sub>sub-\d+)")
+    template_pattern = template_pattern.replace(re.escape(run_placeholder), r"(?P<run>run-\d+)")
+    return re.compile(template_pattern)
+
+def find_sub_run_combos(preprocessed_dir, suffix="preproc-raw"):
+    # Generate a pattern specific to the given suffix
+    pattern = generate_pattern(suffix)
+
+    sub_run_combos = []
+
+    # Walk through the directory structure
+    for root, _, files in os.walk(preprocessed_dir):
+        for file in files:
+            match = pattern.match(file)
+            if match:
+                # Extract "sub" and "run" values
+                sub = match.group("sub")
+                run = match.group("run")
+                # Combine them into "sub_run_combos"
+                sub_run_combos.append(f"{sub}_{run}")
+
+    return sub_run_combos
+
+# Execute the reverse search
+sub_run_combos = find_sub_run_combos(coinsmeg.PREPROCESSED_DIR, suffix="preproc-raw")
+# Sort the list so that it's in ascending sub/runs
+sub_run_combos = sorted(sub_run_combos, key=lambda x: (int(x.split('_')[0].split('-')[1]), int(x.split('_')[1].split('-')[1])))
+
+# Print the results
+print(sub_run_combos)
 
 ############## -------  Run coregistration and source reconstruction   ---------- ############
 
