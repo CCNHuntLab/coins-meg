@@ -172,7 +172,7 @@ def get_sub_parc_dir(sub, run, parc_name=PARC_NAME):
     parcellation."""
     return op.join(get_sub_src_dir(sub, run), parc_name)
 
-def get_sub_src_parc_fpath(sub, run, parc_name=PARC_NAME):
+def get_sub_parc_fpath(sub, run, parc_name=PARC_NAME):
     """Path to the .fif file containing the source-reconstructed MEG data
     for a given subject and run, parcellated by brain region of the given
     parcellation, and loadable as a MNE Raw object."""
