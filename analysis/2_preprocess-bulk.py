@@ -9,11 +9,7 @@ import yaml
 import ipympl
 from osl import preprocessing, utils
 import coinsmeg_data as coinsmeg
-
-### Some initial settings
-
-ifMaxfiltered = True
-
+from dask.distributed import Client, as_completed # for parallel processing
 ### The preprocessing config ####
 
 config_text= """
@@ -33,13 +29,16 @@ meta:
 preproc:                                   
   - find_events:        {min_duration: 0.005}
   - set_channel_types:  {EOG001: eog, EOG002: eog, ECG003: ecg}
-  - filter:             {l_freq: 0.25, h_freq: 100}
+  - filter:             {l_freq: 0.25, h_freq: 40, method: iir, iir_params: {order: 5, ftype: butter}}
   - notch_filter:       {freqs: 50 100}
-  - bad_segments:       {segment_len: 100, picks: mag, significance_level: 0.1}
-  - bad_segments:       {segment_len: 100, picks: grad, significance_level: 0.1}
-  - bad_segments:       {segment_len: 100, picks: mag, mode: diff, significance_level: 0.1}
-  - bad_segments:       {segment_len: 100, picks: grad, mode: diff, significance_level: 0.1}
-  - ica_raw:            {n_components: 64, picks: 'meg'}
+  - resample: {sfreq: 250}
+  - bad_segments: {segment_len: 250, picks: mag}
+  - bad_segments: {segment_len: 250, picks: grad}
+  - bad_segments: {segment_len: 250, picks: mag, mode: diff}
+  - bad_segments: {segment_len: 250, picks: grad, mode: diff}
+  - bad_channels: {picks: mag}
+  - bad_channels: {picks: grad}
+  - ica_raw: {picks: meg, n_components: 64}
   - ica_autoreject:     {picks: meg, ecgmethod: correlation, eogthreshold: auto}
   - interpolate_bads: {}
 """
@@ -50,8 +49,8 @@ with open('config.yaml', 'w') as file:
     yaml.dump(config, file)
 
 # Read in the data ####
-basedir = coinsmeg.DERIVATIVES_DIR # /.../lhunt/.../coins-meg_data/derivatives
-outdir = coinsmeg.PREPROCESSED_DIR # /.../lhunt/.../coins-meg_data/derivatives/preprocessed
+basedir = coinsmeg.DERIVATIVES_DIR 
+outdir = coinsmeg.PREPROCESSED_DIR 
 print(outdir)
 
 # make directory if it doesn't yet exist
@@ -67,9 +66,8 @@ datafiles = osl.utils.Study(fullpath)
 print(datafiles)
 
 # load all runs of all subjects
-#fnames = datafiles.get()
-fnames = datafiles.get(subj="17", run="1") # load a test subject/run
-pprint(fnames)
+fnames = datafiles.get()
+print(fnames)
 
 # Create a text file with the path to each dataset on every line.
 file = open('fnames.txt','w')
@@ -80,33 +78,37 @@ file.close()
 config = osl.preprocessing.load_config("config.yaml")# load in the config
 
 # Apply the config to automate preprocessing ####
-from osl.preprocessing import run_proc_batch
 
 # process all subjects in parallel
-run_proc_batch(config, fnames, outdir=outdir,
-                   logsdir=os.path.join(outdir, 'logs'),
-                   reportdir=os.path.join(outdir, 'report'),
-                   overwrite=True)
+# Parallelize processing using Dask
+def preprocess_subject(fname):
+    """Function to preprocess a single dataset."""
+    preprocessing.run_proc_batch(
+        config,
+        [fname],  # single filename to be processed by each worker
+        outdir=outdir,
+        logsdir=os.path.join(outdir, 'logs'),
+        reportdir=os.path.join(outdir, 'report'),
+        overwrite=True
+    )
 
-#if __name__ == '__main__':
-#    utils.logger.set_up(level="INFO")
-#
-#    from dask.distributed import Client
-#    import glob
-#    import osl
-#    import numpy as np
-#    import os
-#    from multiprocessing import cpu_count
-#
-#    n_cores = multiprocessing.cpu_count()
-#
-#    client = Client(threads_per_worker=1, n_workers=6)
-#
-#    # write extra information here, e.g., definitions of config, files, output_dir
-#
-#    run_proc_batch(config, fnames, outdir=outdir,
- #                  logsdir=os.path.join(outdir, 'logs'),
- #                  reportdir=os.path.join(outdir, 'report'),
- #                  overwrite=True,
- #                  dask_client=True)
+if __name__ == "__main__":
+    utils.logger.set_up(level="INFO")
+
+    # Set up Dask client for parallel processing
+    client = Client(n_workers=4, threads_per_worker=1)
+
+    # Submit tasks for each file to the Dask client
+    futures = [client.submit(preprocess_subject, fname) for fname in fnames]
+
+    # Collect and wait for all tasks to complete
+    for future in as_completed(futures):
+        try:
+            result = future.result()
+            print(f"Completed processing for: {result}")
+        except Exception as e:
+            print(f"Processing failed with error: {e}")
+
+    client.close()
+
 

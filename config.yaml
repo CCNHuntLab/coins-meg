@@ -19,28 +19,34 @@ preproc:
     EOG001: eog
     EOG002: eog
 - filter:
-    h_freq: 100
+    h_freq: 40
+    iir_params:
+      ftype: butter
+      order: 5
     l_freq: 0.25
+    method: iir
 - notch_filter:
     freqs: 50 100
+- resample:
+    sfreq: 250
 - bad_segments:
     picks: mag
-    segment_len: 100
-    significance_level: 0.1
+    segment_len: 250
 - bad_segments:
     picks: grad
-    segment_len: 100
-    significance_level: 0.1
+    segment_len: 250
 - bad_segments:
     mode: diff
     picks: mag
-    segment_len: 100
-    significance_level: 0.1
+    segment_len: 250
 - bad_segments:
     mode: diff
     picks: grad
-    segment_len: 100
-    significance_level: 0.1
+    segment_len: 250
+- bad_channels:
+    picks: mag
+- bad_channels:
+    picks: grad
 - ica_raw:
     n_components: 64
     picks: meg
