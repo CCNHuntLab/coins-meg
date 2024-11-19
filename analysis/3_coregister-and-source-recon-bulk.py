@@ -96,10 +96,13 @@ for sub_run_combo in sub_run_combos:
     smri_file = f"{anat_dir}/{subject_id}_T1w.nii"
     fif_file = coinsmeg.get_sub_preproc_raw_fpath(subject_id, run_id)
     
-    if not os.path.exists(smri_file):
-        print(f"WARNING: smri_file does not exist for {sub_run_combo}!")
+    if (not os.path.exists(smri_file)) or (not os.path.exists(fif_file)):
+        if not os.path.exists(smri_file):
+            print(f"WARNING: smri_file does not exist for {sub_run_combo}!")
+        elif not os.path.exists(fif_file):
+            print(f"WARNING: preprocessed fif_file does not exist for {sub_run_combo}!")
         continue # skip over the rest of the code for this sub_run_combo
-
+    
     source_recon.rhino.compute_surfaces(
         smri_file,
         recon_dir,
@@ -138,7 +141,7 @@ for sub_run_combo in sub_run_combos:
     )
 
     # now view result
-    source_recon.rhino.coreg_display(subjects_dir = "/ohba/pi/lhunt/datasets/coins-meg_data/derivatives/recon", 
+    source_recon.rhino.coreg_display(subjects_dir = recon_dir, 
                                     subject = sub_run_combo,
                                     filename = f"{recon_dir}/{sub_run_combo}/rhino/coreg/coreg_display_plot.html") # saves an interactive html plot at this location
 
@@ -163,8 +166,6 @@ for sub_run_combo in sub_run_combos:
 
     # load forward solution
     fwd_fname = op.join(recon_dir, sub_run_combo, "rhino", "model-fwd.fif") 
-    # tutorial said source_recon.rhino.get_coreg_filenames(recon_dir, subjects[0])["forward_model_file"]
-    # but this did not return a match for "forward_model_file"
     print(fwd_fname)
 
     fwd = read_forward_solution(fwd_fname)
