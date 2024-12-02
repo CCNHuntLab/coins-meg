@@ -6,6 +6,7 @@ import cf_utils as utils
 import coinsmeg_data as coinsmeg
 import mne
 import numpy as np
+import os.path as op
 import sklearn.linear_model
 
 DATA_TYPES = ["parcels", "mag", "grad"]
@@ -257,21 +258,30 @@ def save_trfs(trfs, fpath, verbose=True):
     if verbose:
         print(f"TRFs saved at {fpath}")
 
-def load_trfs(fpath):
+def load_trfs(fpath, do_check_if_exists=True):
     """
     Load the TRFs from a .fif file at the given fpath. The TRFs are returned as
     a list of mne.Evoked instances.
     """
+    if do_check_if_exists and (not op.exists(fpath)):
+        return None
     return mne.read_evokeds(fpath)
 
 def get_trfs_fname(sub, events, datatype,
-    downsamp=10,  downsamp_method="decimate", alpha=0, no_reject=False):
+    downsamp=10, downsamp_method="decimate", alpha=0, no_reject=False):
     downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
     paramkeys = ["sub", "events", "datatype", downsamp_name, "alpha", "no-reject"]
     paramvals = [sub, events, datatype, downsamp, alpha, no_reject]
     fname = utils.name_with_params("trfs", paramkeys, paramvals)
     fname += "_ave" # MNE recommends the file name to end with "ave" for evoked instances
     return fname
+
+def get_trfs_fpath(dir, sub, events, datatype,
+    downsamp=10, downsamp_method="decimate", alpha=0, no_reject=False):
+    trfs_fname = get_trfs_fname(sub, events, datatype,
+        downsamp=downsamp, downsamp_method=downsamp_method,
+        alpha=alpha, no_reject=no_reject)
+    return utils.path_with_components(dir, trfs_fname, "fif")
 
 def calculate_rms_trf(trf_model_coef):
     """

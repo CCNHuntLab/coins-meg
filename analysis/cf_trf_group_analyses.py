@@ -321,8 +321,9 @@ def main():
                 # Save the figure
                 figname = "trf-cluster"
                 fname = cf_utils.name_with_params(figname, paramkeys + ["clust-group"], paramvals + [i_group+1])
-                fpath = cf_utils.path_with_components(outdir, fname, "png")
-                cf_utils.save_figure(fig, fpath)
+                for ext in ["png", "pdf"]:
+                    fpath = cf_utils.path_with_components(outdir, fname, ext)
+                    cf_utils.save_figure(fig, fpath)
 
 def plot_cluster_topomap(ax_topo, ax_colorbar,
     evoked_mean, times, mask, units, scalings, cnorm,
