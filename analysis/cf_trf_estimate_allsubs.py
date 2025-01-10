@@ -31,13 +31,13 @@ def main(args):
     # Whether to reject or skip rejecting bad segments, as defined by annotations
     no_reject = False
 
-    # Downsampling factor to use for the TRF estimation
-    downsamp = args.downsamp # default: 10
+    # Sampling frequency to use for the TRF estimation
+    sfreq = args.sfreq # default: 100
 
     # Method to downsample: "resample" or "decimate"
     # downsamp_method = "resample"
     downsamp_method = "decimate"
-    downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
+    downsamp_name = f"{downsamp_method}-sfreq"
 
     # Ridge regularization parameter values to use for the TRF estimation
     alpha = 0
@@ -92,7 +92,7 @@ def main(args):
         # File path where the TRFs are saved
         trf_fpath = {}
         for k in datatypes:
-            trf_fname = cf_trf.get_trfs_fname(sub, events, k, downsamp=downsamp,
+            trf_fname = cf_trf.get_trfs_fname(sub, events, k, downsamp_sfreq=sfreq,
                 downsamp_method=downsamp_method, alpha=alpha, no_reject=no_reject)
             trf_fpath[k] = cf_utils.path_with_components(outdir, trf_fname, "fif")
         
@@ -111,7 +111,7 @@ def main(args):
         else:
             # Compute the X and Y matrices for the TRF estimation
             XY = cf_trf.get_XY(sub, event_names, do_locally=do_locally,
-            tmin=tmin, tmax=tmax, downsamp=downsamp, downsamp_method=downsamp_method,
+            tmin=tmin, tmax=tmax, downsamp_sfreq=sfreq, downsamp_method=downsamp_method,
             no_reject=no_reject, spaces=spaces)
             X = XY["X"]
             Ys = XY["Y"]
@@ -119,7 +119,7 @@ def main(args):
             if do_plot_dmtx:
                 ax = cf_trf.plot_design_matrix(X, event_names)
                 figname = cf_utils.name_with_params("trf-design-matrix",
-                    ["sub", "events", downsamp_name], [sub, events, downsamp])
+                    ["sub", "events", downsamp_name], [sub, events, sfreq])
                 figpath = cf_utils.path_with_components(outdir, figname, "png")
                 fig = ax.get_figure()
                 cf_utils.save_figure(fig, figpath)
@@ -128,7 +128,6 @@ def main(args):
             # Compute the TRFs from the X and Y matrices
             for k, Y in Ys.items():
                 Y_info = XY["Y_info"][k]
-                sfreq = Y_info["sfreq"]
                 # Create the TRF model
                 trf_model = cf_trf.create_trf_model(event_names, sfreq,
                     tmin=tmin, tmax=tmax, no_reject=no_reject, alpha=alpha)
@@ -181,7 +180,7 @@ def main(args):
                     # Save the figure
                     figname = cf_utils.name_with_params("trf-plot",
                         ["sub", "events", "space", "pick", "agg", downsamp_name, "alpha", "no-reject"],
-                        [sub, events, space, pick, agg, downsamp, alpha, no_reject])
+                        [sub, events, space, pick, agg, sfreq, alpha, no_reject])
                     figpath = cf_utils.path_with_components(outdir, figname, "png")
                     cf_utils.save_figure(fig, figpath)
 
@@ -189,7 +188,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dont_recompute", action='store_true', default=False)
     parser.add_argument("--do_only_dmtx", action='store_true', default=False)
-    parser.add_argument("--downsamp", type=int, default=10)
+    parser.add_argument("--sfreq", type=int, default=100)
     parser.add_argument("-ev", "--events", nargs="+", type=str,
         default=["laserHit", "laserMiss"])
     args = parser.parse_args()
