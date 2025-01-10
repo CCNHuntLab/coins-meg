@@ -30,13 +30,13 @@ def main():
     # Whether to reject or skip rejecting bad segments, as defined by annotations
     no_reject = False
 
-    # Downsampling factor to use for the TRF estimation
-    downsamp = 10
+    # Sampling frequency to use for the TRF estimation
+    sfreq = 100
 
     # Method to downsample: "resample" or "decimate"
     # downsamp_method = "resample"
     downsamp_method = "decimate"
-    downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
+    downsamp_name = f"{downsamp_method}-sfreq"
 
     # Ridge regularization parameter values to use for the TRF estimation
     alphas = [0]
@@ -64,7 +64,7 @@ def main():
     ########################################################
 
     XY = cf_trf.get_XY(sub, event_names, do_locally=do_locally,
-        tmin=tmin, tmax=tmax, downsamp=downsamp, downsamp_method=downsamp_method,
+        tmin=tmin, tmax=tmax, downsamp_sfreq=sfreq, downsamp_method=downsamp_method,
         no_reject=no_reject, spaces=spaces)
     X = XY["X"]
     Ys = XY["Y"]
@@ -87,7 +87,7 @@ def main():
     if do_plot_dmtx:
         ax = cf_trf.plot_design_matrix(X, event_names)
         figname = cf_utils.name_with_params("trf-allruns-design-matrix",
-            ["sub", "events", downsamp_name], [sub, events, downsamp])
+            ["sub", "events", downsamp_name], [sub, events, sfreq])
         figpath = cf_utils.path_with_components(outdir, figname, "png")
         fig = ax.get_figure()
         cf_utils.save_figure(fig, figpath)
@@ -99,7 +99,6 @@ def main():
     for k, Y in Ys.items():
         space = "source" if k == "parcels" else "sensor"
         pick = f"parcel-{i_parcel}" if k == "parcels" else k
-        sfreq = XY["Y_info"][k]["sfreq"]
 
         for alpha in alphas:
             # Create the TRF model
@@ -137,7 +136,7 @@ def main():
             # Save the figure
             figname = cf_utils.name_with_params("trf-allruns",
                 ["sub", "events", "space", "pick", downsamp_name, "alpha", "no-reject"],
-                [sub, events, space, pick, downsamp, alpha, no_reject]
+                [sub, events, space, pick, sfreq, alpha, no_reject]
                 )
             figpath = cf_utils.path_with_components(outdir, figname, "png")
             cf_utils.save_figure(fig, figpath)

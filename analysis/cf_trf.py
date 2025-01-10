@@ -72,7 +72,8 @@ def get_XY(sub, event_names, runs=coinsmeg.RUNS, **kwargs):
 def get_XY_singlerun(sub, run, event_names,
     do_locally=False,
     tmin=-0.5, tmax=1.0,
-    downsamp=10, downsamp_method="resample",
+    downsamp_sfreq=100,
+    downsamp_method="resample",
     no_reject=False,
     spaces=["sensor", "source"]):
     """
@@ -100,14 +101,14 @@ def get_XY_singlerun(sub, run, event_names,
         where the data is stored.
     tmin, tmax: floats
         Time window for the TRF
-    downsamp: int or float
-        Downsampling factor to use for the TRF estimation (this saves memory and
-        compute time, but also improves statistical estimation due to decreasing
-        the number of beta coefficients to estimate).
+    downsamp_sfreq: int
+        The target sampling frequency to use for the TRF estimates (in Hz, num.
+        of samples / s). Downsampling allows us to save memory and compute time.
     downsamp_method: str
         "resample" or "decimate". When "resample", the data is resampled using
         MNE's resample function. When "decimate", the data is decimated by
-        simply taking every nth sample in the data (where n == downsamp).
+        simply taking every nth sample in the data
+        (where n == round(original_sfreq / downsamp_sfreq)).
     no_reject: bool
         Whether to reject or skip rejecting bad segments, as defined by annotations
         in the MNE.Raw data objects.
@@ -141,15 +142,16 @@ def get_XY_singlerun(sub, run, event_names,
 
     info = raws["sourcespc"].info if "source" in spaces else raws["sensorspc"].info
     original_sfreq = info["sfreq"]
-    sfreq = original_sfreq / downsamp
 
     # Resample the data if requested
-    if downsamp != 1 and downsamp_method == "resample":
+    if downsamp_sfreq != original_sfreq and downsamp_method == "resample":
         for k, raw in raws.items():
-            raws[k] = raw.resample(sfreq)
+            raws[k] = raw.resample(downsamp_sfreq)
 
     # Factor to decimate the data if requested
-    decim = downsamp if (downsamp_method == "decimate" and downsamp != 1) else None
+    decim = (round(original_sfreq / downsamp_sfreq)
+        if (downsamp_method == "decimate" and downsamp_sfreq != original_sfreq)
+        else None)
 
     # Find the indices corresponding to the parcels data vs the stim channel
     # in the source-space raw data array
@@ -196,7 +198,7 @@ def get_XY_singlerun(sub, run, event_names,
         ch_types = rawinfo.get_channel_types(i_channels)
         newinfo = mne.create_info(
             ch_names=ch_names,
-            sfreq=sfreq,
+            sfreq=downsamp_sfreq,
             ch_types=ch_types,
         )
         # Set channel information, including channel locations
@@ -265,10 +267,10 @@ def load_trfs(fpath):
     return mne.read_evokeds(fpath)
 
 def get_trfs_fname(sub, events, datatype,
-    downsamp=10,  downsamp_method="decimate", alpha=0, no_reject=False):
-    downsamp_name = "downsamp" if (downsamp_method == "resample") else "decim"
+    downsamp_sfreq=100,  downsamp_method="decimate", alpha=0, no_reject=False):
+    downsamp_name = f"{downsamp_method}-sfreq"
     paramkeys = ["sub", "events", "datatype", downsamp_name, "alpha", "no-reject"]
-    paramvals = [sub, events, datatype, downsamp, alpha, no_reject]
+    paramvals = [sub, events, datatype, downsamp_sfreq, alpha, no_reject]
     fname = utils.name_with_params("trfs", paramkeys, paramvals)
     fname += "_ave" # MNE recommends the file name to end with "ave" for evoked instances
     return fname
