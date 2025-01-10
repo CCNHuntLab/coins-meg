@@ -136,7 +136,7 @@ def main():
             # Save the figure
             figname = cf_utils.name_with_params("trf-allruns",
                 ["sub", "events", "space", "pick", downsamp_name, "alpha", "no-reject"],
-                [sub, events, space, pick, downsamp, alpha, no_reject]
+                [sub, events, space, pick, sfreq, alpha, no_reject]
                 )
             figpath = cf_utils.path_with_components(outdir, figname, "png")
             cf_utils.save_figure(fig, figpath)
