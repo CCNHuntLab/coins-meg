@@ -1,7 +1,5 @@
 ## coins-meg README
 
-##### Last updated LTH 09/08/2023
-
 COINS-MEG analysis repo.
 
 ### Folder Structure
