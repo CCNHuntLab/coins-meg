@@ -10,14 +10,17 @@ Scripts in the repo should write to `/ohba/pi/lhunt/datasets/coins-meg_data/deri
 
 - `analysis` contains:
 
-  - `preprocess-maxfilter.py` which maxfilters the data.
-  - `preprocess-bulk.py` which bulk-preprocesses multiple runs/multiple subjects using osl's batch preprocess tool
+  - `1_maxfilter-bulk.py` which maxfilters the data.
+  - `2_preprocess-bulk.py` which bulk-preprocesses multiple runs/multiple subjects using osl's batch preprocess tool
     - osl batch preprocess function also outputs the `config.yaml` (preprocess settings) and `fnames.txt` (paths of all files to be preprocessed).
+    - overview: bandpass filtered from 0.25-40Hz, downsampled to 250Hz, labelling of bad segments/bad channels, ICA
+  - `3_coregister-and-source-recon-bulk.py` which runs co-regristration, and LCMV beamforming to a parcellation in MNI space
   - `preprocess.py` - can ignore; an earlier manual version of the preprocessing script, which implements each preprocessing step with MNE Python.
   - `bulkprepro-prelim-analysis.ipynb` - preliminary data visualisation and ERF plotting
     - `bulkprepro-prelim-analysis_bulk.py` - does the same thing, but bulk-runs it for specificed participants/runs, and suppresses plot pop-ups while saving them inside `preprocessed/sub-{subj}/run-{run}/meg/auto-max/plots`
   - `glm-prelim.ipynb` does some _very_ preliminary experimenting with GLM-spectrum.
   - A virtual environment folder `venv` which should be ignored as it will not work across computers.
+  - a number of python files begining `cf_trf...` written by @cedricfoucault for temporal response function esimtation
 
 - `docs` contains:
 
